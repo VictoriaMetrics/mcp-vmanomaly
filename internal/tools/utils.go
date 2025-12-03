@@ -12,6 +12,8 @@ const CHARACTER_LIMIT = 25000
 
 // truncateResponse truncates content if it exceeds the specified character limit
 // Returns the original content if under limit, or truncated content with helpful message
+//
+//nolint:unused
 func truncateResponse(content string, limit int) string {
 	if limit <= 0 {
 		return content // No limit specified
@@ -41,6 +43,8 @@ func truncateResponse(content string, limit int) string {
 
 // formatTimestamp converts Unix timestamp to human-readable ISO 8601 format
 // Returns empty string if timestamp is 0 or negative
+//
+//nolint:unused
 func formatTimestamp(unixSeconds float64) string {
 	if unixSeconds <= 0 {
 		return ""
@@ -49,6 +53,8 @@ func formatTimestamp(unixSeconds float64) string {
 }
 
 // formatDuration converts seconds to human-readable duration
+//
+//nolint:unused
 func formatDuration(seconds float64) string {
 	if seconds < 0 {
 		return ""
@@ -67,6 +73,8 @@ func formatDuration(seconds float64) string {
 }
 
 // buildMarkdownTable creates a simple markdown table from key-value pairs
+//
+//nolint:unused
 func buildMarkdownTable(rows [][]string) string {
 	if len(rows) == 0 {
 		return ""

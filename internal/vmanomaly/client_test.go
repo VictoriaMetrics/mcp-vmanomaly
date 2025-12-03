@@ -23,6 +23,7 @@ func assertEqual(t *testing.T, got, want interface{}) {
 	}
 }
 
+//nolint:unused
 func assertNoError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
@@ -82,7 +83,7 @@ func TestClient_GetHealth(t *testing.T) {
 				assertEqual(t, r.URL.Path, "/health")
 				assertEqual(t, r.Method, http.MethodGet)
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -142,7 +143,7 @@ func TestClient_ListModels(t *testing.T) {
 				assertEqual(t, r.URL.Path, "/api/v1/models")
 				assertEqual(t, r.Method, http.MethodGet)
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -217,7 +218,7 @@ func TestClient_GetModelSchema(t *testing.T) {
 				}
 				assertEqual(t, r.Method, http.MethodGet)
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -284,10 +285,10 @@ func TestClient_ValidateModel(t *testing.T) {
 				assertEqual(t, r.Header.Get("Content-Type"), "application/json")
 
 				var body map[string]any
-				json.NewDecoder(r.Body).Decode(&body)
+				_ = json.NewDecoder(r.Body).Decode(&body)
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -381,7 +382,7 @@ func TestClient_GenerateConfig(t *testing.T) {
 				}
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -456,7 +457,7 @@ func TestClient_CreateDetectionTask(t *testing.T) {
 				assertEqual(t, r.Header.Get("Content-Type"), "application/json")
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -523,7 +524,7 @@ func TestClient_GetTaskStatus(t *testing.T) {
 				assertEqual(t, r.Method, http.MethodGet)
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -605,7 +606,7 @@ func TestClient_ListTasks(t *testing.T) {
 				}
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -664,7 +665,7 @@ func TestClient_CancelTask(t *testing.T) {
 				assertEqual(t, r.Method, http.MethodDelete)
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -718,7 +719,7 @@ func TestClient_GetDetectionLimits(t *testing.T) {
 				assertEqual(t, r.Method, http.MethodGet)
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -787,7 +788,7 @@ func TestClient_Query(t *testing.T) {
 				assertEqual(t, r.Header.Get("Content-Type"), "application/json")
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -841,7 +842,7 @@ func TestClient_GetBuildInfo(t *testing.T) {
 				assertEqual(t, r.Method, http.MethodGet)
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 
@@ -864,7 +865,7 @@ func TestClient_ContextHandling(t *testing.T) {
 		client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(100 * time.Millisecond)
 			w.WriteHeader(200)
-			w.Write([]byte(`{"status":"ok"}`))
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
 		})
 		defer server.Close()
 
@@ -881,7 +882,7 @@ func TestClient_ContextHandling(t *testing.T) {
 		client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(200 * time.Millisecond)
 			w.WriteHeader(200)
-			w.Write([]byte(`{"status":"ok"}`))
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
 		})
 		defer server.Close()
 
@@ -897,7 +898,7 @@ func TestClient_ContextHandling(t *testing.T) {
 	t.Run("deadline exceeded", func(t *testing.T) {
 		client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(200)
-			w.Write([]byte(`{"status":"ok"}`))
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
 		})
 		defer server.Close()
 
@@ -1030,7 +1031,7 @@ func TestClient_Compatibility(t *testing.T) {
 				}
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.response))
+				_, _ = w.Write([]byte(tt.response))
 			})
 			defer server.Close()
 

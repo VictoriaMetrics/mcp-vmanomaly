@@ -58,6 +58,8 @@ func RegisterConfigTools(s *server.MCPServer, client *vmanomaly.Client) {
 // ============================================================================
 
 // handleGenerateConfig handles the generate_config tool
+//
+//nolint:unused
 func handleGenerateConfig(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args GenerateConfigArgs) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, req mcp.CallToolRequest, args GenerateConfigArgs) (*mcp.CallToolResult, error) {
 		// Build request with defaults
@@ -114,9 +116,9 @@ func handleValidateConfig(client *vmanomaly.Client) func(ctx context.Context, re
 		// Add helpful message
 		resultMsg := fmt.Sprintf("Validation Result:\n%s\n\n", string(responseJSON))
 		if validation.IsValid {
-			resultMsg += " Configuration is valid and ready to use!"
+			resultMsg += "Configuration is valid and ready to use!"
 		} else {
-			resultMsg += " Configuration is invalid. Check the errors above."
+			resultMsg += "Configuration is invalid. Check the errors above."
 		}
 
 		return mcp.NewToolResultText(resultMsg), nil
