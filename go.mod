@@ -1,6 +1,6 @@
 module mcp-vmanomaly
 
-go 1.25
+go 1.25.5
 
 require (
 	github.com/VictoriaMetrics/metrics v1.40.2

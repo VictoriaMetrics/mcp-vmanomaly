@@ -19,6 +19,7 @@ go.work
 
 # Build output
 /bin/
+/.bin/
 /dist/
 /build/
 /mcp-vmanomaly

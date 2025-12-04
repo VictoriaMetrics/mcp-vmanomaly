@@ -1,4 +1,4 @@
-.PHONY: build build-all run test test-coverage test-integration test-integration-docker test-all ci clean install fmt vet lint check update-docs help
+.PHONY: build build-all run test test-coverage test-integration test-integration-docker test-all ci clean install setup-ci fmt vet lint check update-docs help
 
 # Binary name
 BINARY_NAME=mcp-vmanomaly
@@ -13,6 +13,21 @@ GOGET=$(GOCMD) get
 GOFMT=$(GOCMD) fmt
 GOVET=$(GOCMD) vet
 GOMOD=$(GOCMD) mod
+
+# Local bin for CI tools
+LOCALBIN = $(shell pwd)/.bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+# CI Tool versions
+GOLANGCI_LINT_VERSION ?= v1.62.2
+WWHRD_VERSION ?= v0.4.0
+GOVULNCHECK_VERSION ?= latest
+
+# CI Tool paths
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+WWHRD = $(LOCALBIN)/wwhrd
+GOVULNCHECK = $(LOCALBIN)/govulncheck
 
 # Main package path
 MAIN_PATH=./cmd/$(BINARY_NAME)
@@ -81,13 +96,10 @@ ci: ## CI pipeline (lint + check + tests + integration with Docker)
 	@$(MAKE) check
 	@echo "Step 3: Unit tests..."
 	@$(MAKE) test
-	@echo "Step 4: Integration tests..."
-	@$(MAKE) test-integration-docker
-	@echo "=== CI Pipeline Complete ==="
 
 clean: ## Clean build artifacts
 	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR)
+	@rm -rf $(BUILD_DIR) $(LOCALBIN)
 	@rm -f coverage.out coverage.html
 	@echo "Clean complete"
 
@@ -97,6 +109,17 @@ install: ## Install dependencies
 	$(GOMOD) tidy
 	@echo "Dependencies installed"
 
+setup-ci: $(GOLANGCI_LINT) $(WWHRD) $(GOVULNCHECK) ## Install CI tools to .bin/
+
+$(GOLANGCI_LINT): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+$(WWHRD): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/frapposelli/wwhrd@$(WWHRD_VERSION)
+
+$(GOVULNCHECK): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
 fmt: ## Format code
 	@echo "Formatting code..."
 	$(GOFMT) ./...
@@ -105,11 +128,12 @@ vet: ## Run go vet
 	@echo "Running go vet..."
 	$(GOVET) ./...
 
-lint: fmt vet ## Run all linters
-	@bash ./scripts/lint-all.sh
+lint: fmt vet $(GOLANGCI_LINT) ## Run all linters
+	$(GOLANGCI_LINT) run --config .golangci.yml
 
-check: ## Check licenses and vulnerabilities
-	@bash ./scripts/check-all.sh
+check: $(WWHRD) $(GOVULNCHECK) ## Check licenses and vulnerabilities
+	$(WWHRD) check -f .wwhrd.yml
+	$(GOVULNCHECK) ./...
 
 update-docs: ## Update embedded vmanomaly documentation
 	@bash ./scripts/update-docs.sh
