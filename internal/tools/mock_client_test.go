@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"mcp-vmanomaly/internal/vmanomaly"
+	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/vmanomaly"
 )
 
 // MockClient is a mock implementation of vmanomaly.Client for testing

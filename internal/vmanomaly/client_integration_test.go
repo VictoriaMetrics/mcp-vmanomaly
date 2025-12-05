@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"mcp-vmanomaly/internal/vmanomaly"
+	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/vmanomaly"
 )
 
 func getTestClient(t *testing.T) *vmanomaly.Client {

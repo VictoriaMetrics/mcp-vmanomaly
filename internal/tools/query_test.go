@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"mcp-vmanomaly/internal/vmanomaly"
+	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/vmanomaly"
 )
 
 func TestQueryMetrics_Defaults(t *testing.T) {
