@@ -38,13 +38,6 @@ type ValidateConfigArgs struct {
 
 // RegisterConfigTools registers all configuration-related tools
 func RegisterConfigTools(s *server.MCPServer, client *vmanomaly.Client) {
-	//generateConfigTool := mcp.NewTool(
-	//	"generate_config",
-	//	mcp.WithDescription("Generate a complete vmanomaly YAML configuration file from parameters. This creates a production-ready config that can be deployed to run anomaly detection. The config includes reader, scheduler, model, and writer sections."),
-	//	mcp.WithInputSchema[GenerateConfigArgs](),
-	//)
-	//s.AddTool(generateConfigTool, mcp.NewTypedToolHandler(handleGenerateConfig(client)))
-
 	validateConfigTool := mcp.NewTool(
 		"vmanomaly_validate_config",
 		mcp.WithDescription("Validate a complete vmanomaly YAML configuration. Takes a full configuration object (with reader, scheduler, model, writer sections) and returns validation result with normalized config or error details. Use this to verify a complete config before deployment."),
@@ -56,47 +49,6 @@ func RegisterConfigTools(s *server.MCPServer, client *vmanomaly.Client) {
 // ============================================================================
 // Tool Handlers
 // ============================================================================
-
-// handleGenerateConfig handles the generate_config tool
-//
-//nolint:unused
-func handleGenerateConfig(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args GenerateConfigArgs) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, req mcp.CallToolRequest, args GenerateConfigArgs) (*mcp.CallToolResult, error) {
-		// Build request with defaults
-		configReq := &vmanomaly.ConfigGenerationRequest{
-			Query:         args.Query,
-			Step:          args.Step,
-			DatasourceURL: args.DatasourceURL,
-			ModelSpec:     args.ModelSpec,
-			FitWindow:     "1d",
-			FitEvery:      "1d",
-		}
-
-		// Override defaults if provided
-		if args.FitWindow != "" {
-			configReq.FitWindow = args.FitWindow
-		}
-		if args.FitEvery != "" {
-			configReq.FitEvery = args.FitEvery
-		}
-		if args.TenantID != "" {
-			configReq.TenantID = &args.TenantID
-		}
-		if args.InferEvery != "" {
-			configReq.InferEvery = &args.InferEvery
-		}
-
-		// Call API
-		yamlConfig, err := client.GenerateConfig(ctx, configReq)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to generate config: %v", err)), nil
-		}
-
-		// Return YAML config
-		resultMsg := fmt.Sprintf("Generated vmanomaly Configuration:\n\n```yaml\n%s\n```\n\nThis configuration can be saved to a file and used to run vmanomaly.", yamlConfig)
-		return mcp.NewToolResultText(resultMsg), nil
-	}
-}
 
 // handleValidateConfig handles the validate_config tool
 func handleValidateConfig(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args ValidateConfigArgs) (*mcp.CallToolResult, error) {

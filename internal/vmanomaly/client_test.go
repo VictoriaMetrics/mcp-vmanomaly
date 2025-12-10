@@ -23,14 +23,6 @@ func assertEqual(t *testing.T, got, want interface{}) {
 	}
 }
 
-//nolint:unused
-func assertNoError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestNewClient(t *testing.T) {
 	client := NewClient("http://localhost:8490", "test-token", map[string]string{"X-Custom": "value"})
 
