@@ -25,10 +25,12 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-const (
-	serverName    = "mcp-vmanomaly"
-	serverVersion = "0.1.0"
+var (
+	version = "dev"
+	date    = "unknown"
 )
+
+const serverName = "mcp-vmanomaly"
 
 const (
 	shutdownPeriod      = 15 * time.Second
@@ -72,7 +74,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	if !c.IsStdio() {
-		slog.Info("Starting server", "name", serverName, "version", serverVersion)
+		slog.Info("Starting server", "name", serverName, "version", version, "date", date)
 	}
 
 	ms := metrics.NewSet()
@@ -93,7 +95,7 @@ func main() {
 	if logLevel <= slog.LevelDebug {
 		mcpServer = server.NewMCPServer(
 			serverName,
-			serverVersion,
+			fmt.Sprintf("v%s (date: %s)", version, date),
 			server.WithRecovery(),
 			server.WithLogging(),
 			server.WithToolCapabilities(true),
@@ -105,7 +107,7 @@ func main() {
 	} else {
 		mcpServer = server.NewMCPServer(
 			serverName,
-			serverVersion,
+			fmt.Sprintf("v%s (date: %s)", version, date),
 			server.WithRecovery(),
 			server.WithToolCapabilities(true),
 			server.WithResourceCapabilities(!c.IsResourcesDisabled(), false),
