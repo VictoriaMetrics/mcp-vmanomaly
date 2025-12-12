@@ -44,7 +44,8 @@ changelog:
 
 dockers_v2:
   - images:
-      - "ghcr.io/victoriametrics-community/mcp-vmanomaly"
+      # TODO[vladh]: Change back to ghcr.io/victoriametrics-community/mcp-vmanomaly for stable release
+      - "ghcr.io/galic-vlad/mcp-vmanomaly"
     tags:
       - latest
       - "{{ .Version }}"
