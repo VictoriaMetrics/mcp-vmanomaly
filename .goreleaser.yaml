@@ -44,7 +44,6 @@ changelog:
 
 dockers_v2:
   - images:
-      # TODO[vladh]: Change back to ghcr.io/victoriametrics-community/mcp-vmanomaly for stable release
       - "ghcr.io/galic-vlad/mcp-vmanomaly"
     tags:
       - latest
@@ -60,7 +59,7 @@ dockers_v2:
       "org.opencontainers.image.created": "{{.Date}}"
       "org.opencontainers.image.revision": "{{.FullCommit}}"
       "org.opencontainers.image.licenses": "Apache-2.0"
-      "io.modelcontextprotocol.server.name": "io.github.VictoriaMetrics-Community/mcp-vmanomaly"
+      "io.modelcontextprotocol.server.name": "io.github.galic-vlad/mcp-vmanomaly"
     annotations:
       "project": "{{.ProjectName}}"
     platforms:

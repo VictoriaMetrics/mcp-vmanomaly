@@ -1,8 +1,8 @@
 # MCP Server for vmanomaly
 
-[![Latest Release](https://img.shields.io/github/v/release/VictoriaMetrics-Community/mcp-vmanomaly?sort=semver&label=&logo=github&labelColor=gray&color=gray)](https://github.com/VictoriaMetrics-Community/mcp-vmanomaly/releases)
-[![smithery badge](https://smithery.ai/badge/@VictoriaMetrics-Community/mcp-vmanomaly)](https://smithery.ai/server/@VictoriaMetrics-Community/mcp-vmanomaly)
-![License](https://img.shields.io/github/license/VictoriaMetrics-Community/mcp-vmanomaly?labelColor=green&label=&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics-Community%2Fmcp-vmanomaly%2Fblob%2Fmain%2FLICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/galic-vlad/mcp-vmanomaly?sort=semver&label=&logo=github&labelColor=gray&color=gray)](https://github.com/galic-vlad/mcp-vmanomaly/releases)
+[![smithery badge](https://smithery.ai/badge/@galic-vlad/mcp-vmanomaly)](https://smithery.ai/server/@galic-vlad/mcp-vmanomaly)
+![License](https://img.shields.io/github/license/galic-vlad/mcp-vmanomaly?labelColor=green&label=&link=https%3A%2F%2Fgithub.com%2Fgalic-vlad%2Fmcp-vmanomaly%2Fblob%2Fmain%2FLICENSE)
 ![Slack](https://img.shields.io/badge/Join-4A154B?logo=slack&link=https%3A%2F%2Fslack.victoriametrics.com)
 ![X](https://img.shields.io/twitter/follow/VictoriaMetrics?style=flat&label=Follow&color=black&logo=x&labelColor=black&link=https%3A%2F%2Fx.com%2FVictoriaMetrics)
 
@@ -34,18 +34,18 @@ The quality of the MCP Server and its responses depends very much on the capabil
 ### Go
 
 ```bash
-go install github.com/VictoriaMetrics-Community/mcp-vmanomaly/cmd/mcp-vmanomaly@latest
+go install github.com/galic-vlad/mcp-vmanomaly/cmd/mcp-vmanomaly@latest
 ```
 
 ### Binaries
 
-Download the latest release from [Releases](https://github.com/VictoriaMetrics-Community/mcp-vmanomaly/releases) page and put it to your PATH.
+Download the latest release from [Releases](https://github.com/galic-vlad/mcp-vmanomaly/releases) page and put it to your PATH.
 
 Example for Linux x86_64 (other architectures and platforms are also available):
 
 ```bash
-latest=$(curl -s https://api.github.com/repos/VictoriaMetrics-Community/mcp-vmanomaly/releases/latest | grep 'tag_name' | cut -d\" -f4)
-wget https://github.com/VictoriaMetrics-Community/mcp-vmanomaly/releases/download/$latest/mcp-vmanomaly_Linux_x86_64.tar.gz
+latest=$(curl -s https://api.github.com/repos/galic-vlad/mcp-vmanomaly/releases/latest | grep 'tag_name' | cut -d\" -f4)
+wget https://github.com/galic-vlad/mcp-vmanomaly/releases/download/$latest/mcp-vmanomaly_Linux_x86_64.tar.gz
 tar axvf mcp-vmanomaly_Linux_x86_64.tar.gz
 ```
 
@@ -61,7 +61,7 @@ docker run -d --name mcp-vmanomaly \
   -e MCP_SERVER_MODE=http \
   -e MCP_LISTEN_ADDR=:8080 \
   -p 8080:8080 \
-  ghcr.io/victoriametrics-community/mcp-vmanomaly
+  ghcr.io/galic-vlad/mcp-vmanomaly
 ```
 
 You should replace environment variables with your own parameters.
@@ -69,7 +69,7 @@ You should replace environment variables with your own parameters.
 Note that the `MCP_SERVER_MODE=http` flag is used to enable Streamable HTTP mode.
 More details about server modes can be found in the [Configuration](#configuration) section.
 
-See available docker images in [github registry](https://github.com/orgs/VictoriaMetrics-Community/packages/container/package/mcp-vmanomaly).
+See available docker images in [github registry](https://github.com/galic-vlad/mcp-vmanomaly/pkgs/container/mcp-vmanomaly).
 
 Also see [Using Docker instead of binary](#using-docker-instead-of-binary) section for more details about using Docker with MCP server with clients in stdio mode.
 
@@ -80,7 +80,7 @@ For building binary from source code you can use the following approach:
 - Clone repo:
 
   ```bash
-  git clone https://github.com/VictoriaMetrics-Community/mcp-vmanomaly.git
+  git clone https://github.com/galic-vlad/mcp-vmanomaly.git
   cd mcp-vmanomaly
   ```
 
@@ -119,7 +119,7 @@ npx -y @smithery/cli list clients
 #  amazon-bedrock
 
 # Install vmanomaly MCP server for your client
-npx -y @smithery/cli install @VictoriaMetrics-Community/mcp-vmanomaly --client <YOUR-CLIENT-NAME>
+npx -y @smithery/cli install @galic-vlad/mcp-vmanomaly --client <YOUR-CLIENT-NAME>
 # and follow the instructions
 ```
 
@@ -354,7 +354,7 @@ You should replace run command in configuration examples above in the following 
         "-e", "VMANOMALY_ENDPOINT",
         "-e", "VMANOMALY_BEARER_TOKEN",
         "-e", "VMANOMALY_HEADERS",
-        "ghcr.io/victoriametrics-community/mcp-vmanomaly"
+        "ghcr.io/galic-vlad/mcp-vmanomaly"
       ],
       "env": {
         "VMANOMALY_ENDPOINT": "http://localhost:8490",
