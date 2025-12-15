@@ -37,7 +37,7 @@ func TestInitConfig(t *testing.T) {
 	t.Run("Valid configuration", func(t *testing.T) {
 		// Set environment variables
 		os.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
-		os.Setenv("MCP_SERVER_MODE", "sse")
+		os.Setenv("MCP_SERVER_MODE", "http")
 		os.Setenv("MCP_LISTEN_ADDR", "localhost:9090")
 		os.Setenv("MCP_LOG_LEVEL", "debug")
 		os.Setenv("MCP_LOG_FILE", "/tmp/test.log")
@@ -59,11 +59,11 @@ func TestInitConfig(t *testing.T) {
 		if cfg.VmanomalyEndpoint() != "http://localhost:8490" {
 			t.Errorf("Expected endpoint 'http://localhost:8490', got: %s", cfg.VmanomalyEndpoint())
 		}
-		if cfg.ServerMode() != "sse" {
-			t.Errorf("Expected server mode 'sse', got: %s", cfg.ServerMode())
+		if cfg.ServerMode() != "http" {
+			t.Errorf("Expected server mode 'http', got: %s", cfg.ServerMode())
 		}
-		if !cfg.IsSSE() {
-			t.Error("Expected IsSSE() to be true")
+		if !cfg.IsHTTP() {
+			t.Error("Expected IsHTTP() to be true")
 		}
 		if cfg.ListenAddr() != "localhost:9090" {
 			t.Errorf("Expected listen addr 'localhost:9090', got: %s", cfg.ListenAddr())

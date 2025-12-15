@@ -103,8 +103,8 @@ func InitConfig() (*Config, error) {
 	}
 
 	// Validate server mode
-	if result.serverMode != "" && result.serverMode != "stdio" && result.serverMode != "sse" && result.serverMode != "http" {
-		return nil, fmt.Errorf("MCP_SERVER_MODE must be 'stdio', 'sse' or 'http'")
+	if result.serverMode != "" && result.serverMode != "stdio" && result.serverMode != "http" {
+		return nil, fmt.Errorf("MCP_SERVER_MODE must be 'stdio' or 'http'")
 	}
 
 	// Validate log level
@@ -136,10 +136,6 @@ func (c *Config) ServerMode() string {
 
 func (c *Config) IsStdio() bool {
 	return c.serverMode == "stdio"
-}
-
-func (c *Config) IsSSE() bool {
-	return c.serverMode == "sse"
 }
 
 func (c *Config) IsHTTP() bool {

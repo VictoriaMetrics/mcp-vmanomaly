@@ -58,7 +58,7 @@ This is the easiest way to get started without needing to install Go or build fr
 ```bash
 docker run -d --name mcp-vmanomaly \
   -e VMANOMALY_ENDPOINT=http://localhost:8490 \
-  -e MCP_SERVER_MODE=sse \
+  -e MCP_SERVER_MODE=http \
   -e MCP_LISTEN_ADDR=:8080 \
   -p 8080:8080 \
   ghcr.io/victoriametrics-community/mcp-vmanomaly
@@ -127,26 +127,32 @@ npx -y @smithery/cli install @VictoriaMetrics-Community/mcp-vmanomaly --client <
 
 MCP Server for vmanomaly is configured via environment variables:
 
-| Variable                  | Description                                                                                                  | Required | Default          | Allowed values         |
-|---------------------------|--------------------------------------------------------------------------------------------------------------|----------|------------------|------------------------|
-| `VMANOMALY_ENDPOINT`      | vmanomaly server endpoint URL (e.g., http://localhost:8490)                                                  | Yes      | -                | -                      |
-| `VMANOMALY_BEARER_TOKEN`  | Bearer token for authenticating with vmanomaly API                                                           | No       | -                | -                      |
-| `VMANOMALY_HEADERS`       | Custom HTTP headers for requests (comma-separated key=value pairs, e.g., X-Custom=value1,X-Auth=value2)     | No       | -                | -                      |
-| `MCP_SERVER_MODE`         | Server operation mode. See [Modes](#modes) for details.                                                      | No       | `stdio`          | `stdio`, `sse`, `http` |
-| `MCP_LISTEN_ADDR`         | Address for SSE or HTTP server to listen on                                                                  | No       | `localhost:8080` | -                      |
-| `MCP_DISABLED_TOOLS`      | Comma-separated list of tools to disable                                                                     | No       | -                | -                      |
-| `MCP_DISABLE_RESOURCES`   | Disable all resources (documentation search will continue to work)                                           | No       | `false`          | `false`, `true`        |
-| `MCP_HEARTBEAT_INTERVAL`  | Heartbeat interval for streamable-http protocol (keeps connection alive through network infrastructure)      | No       | `30s`            | -                      |
-| `MCP_LOG_LEVEL`           | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                           | No       | `info`           | -                      |
-| `MCP_LOG_FILE`            | Log file path (empty = stderr)                                                                                | No       | `stderr`         | -                      |
+| Variable                 | Description                                                                                             | Required | Default          | Allowed values  |
+|--------------------------|---------------------------------------------------------------------------------------------------------|----------|------------------|-----------------|
+| `VMANOMALY_ENDPOINT`     | vmanomaly server endpoint URL (e.g., http://localhost:8490)                                             | Yes      | -                | -               |
+| `VMANOMALY_BEARER_TOKEN` | Bearer token for authenticating with vmanomaly API                                                      | No       | -                | -               |
+| `VMANOMALY_HEADERS`      | Custom HTTP headers for requests (comma-separated key=value pairs, e.g., X-Custom=value1,X-Auth=value2) | No       | -                | -               |
+| `MCP_SERVER_MODE`        | Server operation mode. See [Modes](#modes) for details.                                                 | No       | `stdio`          | `stdio`, `http` |
+| `MCP_LISTEN_ADDR`        | Address for HTTP server to listen on                                                                    | No       | `localhost:8080` | -               |
+| `MCP_DISABLED_TOOLS`     | Comma-separated list of tools to disable                                                                | No       | -                | -               |
+| `MCP_DISABLE_RESOURCES`  | Disable all resources (documentation search will continue to work)                                      | No       | `false`          | `false`, `true` |
+| `MCP_HEARTBEAT_INTERVAL` | Heartbeat interval for streamable-http protocol (keeps connection alive through network infrastructure) | No       | `30s`            | -               |
+| `MCP_LOG_LEVEL`          | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                      | No       | `info`           | -               |
+| `MCP_LOG_FILE`           | Log file path (empty = stderr)                                                                          | No       | `stderr`         | -               |
 
 ### Modes
 
 MCP Server supports the following modes of operation (transports):
 
-- `stdio` - Standard input/output mode, where the server reads commands from standard input and writes responses to standard output. This is the default mode and is suitable for local servers.
-- `sse` - Server-Sent Events. Server will expose the `/sse` and `/message` endpoints for SSE connections.
+- `stdio` - Standard input/output mode, where the server reads commands from standard input and
+  writes responses to standard output. This is the default mode and is suitable for local servers.
 - `http` - Streamable HTTP. Server will expose the `/mcp` endpoint for HTTP connections.
+
+> [!NOTE]
+> The `sse` transport mode was officialy deprecated from MCP
+> Specification [(version 2025-03-26)](https://modelcontextprotocol.io/specification/2025-03-26/changelog#major-changes)
+> and was replaced by Streamable HTTP transport (`http` mode).
+
 
 More info about transports you can find in MCP docs:
 
@@ -167,7 +173,7 @@ export VMANOMALY_BEARER_TOKEN="your-token"
 export VMANOMALY_HEADERS="X-Custom-Header=value1,X-Another=value2"
 
 # Server mode
-export MCP_SERVER_MODE="sse"
+export MCP_SERVER_MODE="http"
 export MCP_LISTEN_ADDR="0.0.0.0:8080"
 
 # Logging
@@ -177,11 +183,10 @@ export MCP_LOG_FILE="/tmp/mcp-vmanomaly.log"
 
 ## Endpoints
 
-In SSE and HTTP modes the MCP server provides the following endpoints:
+In HTTP mode the MCP server provides the following endpoints:
 
 | Endpoint             | Description                                                                                       |
 |----------------------|---------------------------------------------------------------------------------------------------|
-| `/sse` + `/message`  | Endpoints for messages in SSE mode (for MCP clients that support SSE)                            |
 | `/mcp`               | HTTP endpoint for streaming messages in HTTP mode (for MCP clients that support Streamable HTTP) |
 | `/metrics`           | Metrics in Prometheus format for monitoring the MCP server                                        |
 | `/health/liveness`   | Liveness check endpoint to ensure the server is running                                           |
@@ -488,7 +493,7 @@ During this dialog, the assistant used the following tools:
 
 ## Monitoring
 
-In [SSE and HTTP modes](#modes) the MCP Server provides metrics in Prometheus format at the `/metrics` endpoint.
+In [HTTP mode](#modes) the MCP Server provides metrics in Prometheus format at the `/metrics` endpoint.
 
 **Tracked operations**:
 
@@ -501,8 +506,8 @@ In [SSE and HTTP modes](#modes) the MCP Server provides metrics in Prometheus fo
 **Example**:
 
 ```bash
-# Start in SSE mode
-MCP_SERVER_MODE=sse ./bin/mcp-vmanomaly
+# Start in HTTP mode
+VMANOMALY_ENDPOINT="http://localhost:8490" MCP_SERVER_MODE=http ./bin/mcp-vmanomaly
 
 # Query metrics
 curl http://localhost:8080/metrics

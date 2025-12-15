@@ -134,7 +134,7 @@ func main() {
 		return
 	}
 
-	// SSE/HTTP mode - full server with graceful shutdown
+	// HTTP mode - full server with graceful shutdown
 	var isReady atomic.Bool
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -168,11 +168,6 @@ func main() {
 
 	// Server mode-specific handlers
 	switch c.ServerMode() {
-	case "sse":
-		slog.Info("Starting server in SSE mode", "addr", c.ListenAddr())
-		srv := server.NewSSEServer(mcpServer)
-		mux.Handle(srv.CompleteSsePath(), srv.SSEHandler())
-		mux.Handle(srv.CompleteMessagePath(), srv.MessageHandler())
 	case "http":
 		slog.Info("Starting server in HTTP mode", "addr", c.ListenAddr())
 		heartBeatOption := server.WithHeartbeatInterval(c.HeartbeatInterval())
