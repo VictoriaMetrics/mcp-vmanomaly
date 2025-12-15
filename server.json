@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.github.galic-vlad/mcp-vmanomaly",
-  "description": "MCP Server for vmanomaly - VictoriaMetrics anomaly detection application. Provides integration with vmanomaly REST API for anomaly detection, model management, and observability insights",
+  "description": "MCP Server for vmanomaly - VictoriaMetrics anomaly detection",
   "status": "active",
   "repository": {
     "url": "https://github.com/galic-vlad/mcp-vmanomaly",
