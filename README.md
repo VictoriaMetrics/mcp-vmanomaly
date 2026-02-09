@@ -5,27 +5,27 @@
 ![Slack](https://img.shields.io/badge/Join-4A154B?logo=slack&link=https%3A%2F%2Fslack.victoriametrics.com)
 ![X](https://img.shields.io/twitter/follow/VictoriaMetrics?style=flat&label=Follow&color=black&logo=x&labelColor=black&link=https%3A%2F%2Fx.com%2FVictoriaMetrics)
 
-The implementation of [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/) - VictoriaMetrics' anomaly detection application.
+The implementation of [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [`vmanomaly`](https://docs.victoriametrics.com/anomaly-detection/) - VictoriaMetrics Anomaly Detection product.
 
-This provides seamless integration with vmanomaly REST API and [documentation](https://docs.victoriametrics.com/anomaly-detection/) for AI-assisted anomaly detection, model management, and observability insights.
+This provides seamless integration with `vmanomaly` REST API and [documentation](https://docs.victoriametrics.com/anomaly-detection/) for AI-assisted anomaly detection, model management, and observability insights.
 
 ## Features
 
-This MCP server enables AI assistants like Claude to interact with vmanomaly for:
+This MCP server enables AI assistants like Claude to interact with `vmanomaly` for:
 
-- **Health Monitoring**: Check vmanomaly server health and build information
-- **Model Management**: List, validate, and configure anomaly detection models (10+ model types: zscore, prophet, mad, holtwinters, isolation_forest, and more)
-- **Configuration Generation**: Generate complete vmanomaly YAML configurations
-- **Alert Rule Generation**: Generate VMAlert rules for anomaly score alerting
-- **Documentation Search**: Full-text search across embedded vmanomaly documentation with fuzzy matching
+- **Health Monitoring**: Check `vmanomaly` server health and build information
+- **Model Management**: List, validate, and configure anomaly detection models (like `zscore_online`, `prophet`, and more)
+- **Configuration Generation**: Generate complete `vmanomaly` YAML configurations
+- **Alert Rule Generation**: Generate [`vmalert`](https://docs.victoriametrics.com/victoriametrics/vmalert/) [alerting rules](https://docs.victoriametrics.com/victoriametrics/vmalert/#alerting-rules) based on [anomaly score metrics](https://docs.victoriametrics.com/anomaly-detection/faq/#what-is-anomaly-score) to simplify alerting setup
+- **Documentation Search**: Full-text search across embedded `vmanomaly` documentation with fuzzy matching
 
-The MCP server contains embedded up-to-date vmanomaly documentation and is able to search it without online access.
+The MCP server contains embedded up-to-date `vmanomaly` documentation and is able to search it without online access.
 
-The quality of the MCP Server and its responses depends very much on the capabilities of your client and the quality of the model you are using.
+> The quality of the MCP Server and its responses depends very much on the capabilities of your client and the quality of the model you are using.
 
 ## Requirements
 
-- [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/) instance (version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+) with REST API access
+- [`vmanomaly`](https://docs.victoriametrics.com/anomaly-detection/) instance (version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+) with REST API access
 - Go 1.24 or higher (if building from source)
 
 ## Installation
@@ -50,7 +50,7 @@ tar axvf mcp-vmanomaly_Linux_x86_64.tar.gz
 
 ### Docker
 
-You can run vmanomaly MCP Server using Docker.
+You can run `vmanomaly` MCP Server using Docker.
 
 This is the easiest way to get started without needing to install Go or build from source.
 
