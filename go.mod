@@ -1,4 +1,4 @@
-module github.com/VictoriaMetrics-Community/mcp-vmanomaly
+module github.com/VictoriaMetrics/mcp-vmanomaly
 
 go 1.25.7
 

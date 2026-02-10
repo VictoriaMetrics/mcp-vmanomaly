@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/vmanomaly"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
