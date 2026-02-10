@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/resources"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/resources"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"

@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/cmd/mcp-vmanomaly/config"
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/cmd/mcp-vmanomaly/hooks"
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/promts"
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/resources"
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/tools"
-	"github.com/VictoriaMetrics-Community/mcp-vmanomaly/internal/vmanomaly"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/config"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/hooks"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/promts"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/resources"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/tools"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
 
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
