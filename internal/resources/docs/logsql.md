@@ -278,6 +278,7 @@ The list of LogsQL filters:
   all the provided [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) / phrases
 - [`contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_any-filter) - matches logs with [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) containing
   at least one of the provided [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) / phrases
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter) - matches logs with a JSON array stored in the given field containing the given value
 - [Case-insensitive filter](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter) - matches logs with the given case-insensitive word, phrase or prefix
 - [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter) - matches logs with log fields containing the given words and phrases with cases according to the given pattern
 - [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter) - matches logs with log fields equal to the given words and phrases with cases according to the given pattern
@@ -456,7 +457,7 @@ For example, the following query selects logs between Monday and Friday at `+020
 _time:week_range[Mon, Fri] offset 2h
 ```
 
-If logs must be selected on the giveen week days according to UTC, then use `offset 0h`:
+If logs must be selected on the given week days according to UTC, then use `offset 0h`:
 
 ```logsql
 _time:week_range[Mon, Fri] offset 0h
@@ -768,7 +769,7 @@ VictoriaLogs supports filtering logs by patterns with the following filters:
 
 - `pattern_match("pattern")` - matches the given `pattern` for any part of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 - `pattern_match_full("pattern")` - matches the given `pattern` for the whole [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
-- `pattern_match_prefix("pattern")` - matches the given `pattern` at the begining of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+- `pattern_match_prefix("pattern")` - matches the given `pattern` at the beginning of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 - `pattern_match_suffix("pattern")` - matches the given `pattern` at the end of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 
 These filters can be applied to any given log field with the `log_field:pattern_match("pattern")` syntax.
@@ -1087,6 +1088,33 @@ See also:
 - [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [`in` filter](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter)
 - [`contains_all` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_all-filter)
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter)
+
+### json_array_contains_any filter
+
+[Log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) may contain JSON arrays. For example, `tags=["prod","canary"]`.
+This is common for JSON-encoded logs. LogsQL provides `json_array_contains_any("v1",...,"vN")` filter for matching such fields by the presence
+of at least one of the given `v1`, ..., `v1` values in the JSON array.
+
+For example, the following query selects logs, which have the `prod` or `dev` values inside the JSON array stored at `tags` field:
+
+```logsql
+tags:json_array_contains_any("prod","dev")
+```
+
+The `json_array_contains_any` filter supports the following value types in the JSON array:
+
+- JSON strings (exact match)
+- JSON numbers (matched by their string representation, e.g. `123`)
+- JSON booleans (`true` / `false`)
+- JSON null (`null`)
+
+Nested arrays and objects are ignored by this filter.
+
+See also:
+
+- [Exact filter](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 
 ### Subquery filter
 
@@ -2197,6 +2225,13 @@ For example, the following query returns all the field names with the number of 
 _time:5m | field_names
 ```
 
+It is possible to return only the field names containing the given substring by using `filter "substring"` modifier. For example, the following query
+returns only field names containing the `kubernetes` substring across all the logs over the last 5 minutes:
+
+```logsql
+_time:5m | field_names filter "kubernetes"
+```
+
 Field names are returned in arbitrary order. Use [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) in order to sort them if needed.
 
 See also:
@@ -2213,6 +2248,20 @@ For example, the following query returns all the values with the number of match
 
 ```logsql
 _time:5m | field_values level
+```
+
+It is possible to return only the field values containing the given substring by using `filter "substring"` modifier. For example, the following query
+returns only values containing the `foo` substring for the `host` field across all the logs over the last 5 minutes:
+
+```logsql
+_time:5m | field_values host filter "foo"
+```
+
+This query is equivalent to the following query, which uses [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) for filtering
+`host` field values containing the `foo` substring before passing them to `field_values` pipe:
+
+```logsql
+_time:5m | filter host:*foo* | field_values host
 ```
 
 It is possible to limit the number of returned values by adding `limit N` to the end of `field_values ...`. For example, the following query returns
@@ -3342,9 +3391,6 @@ See also:
 
 - [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
 - [`stats` pipe functions](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions)
-- [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
-- [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats)
-- [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats)
 
 #### Stats by time buckets
 
@@ -3836,8 +3882,7 @@ See also:
 - [`extract` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe)
 - [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
-- [`pack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pack_json-pipe)
-- [`pack_logfmt` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pack_logfmt-pipe)
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter)
 
 #### Conditional unpack_json
 
@@ -4107,11 +4152,10 @@ the unrolled array items into separate fields for further processing.
 
 See also:
 
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter)
 - [`unpack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_json-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 - [`extract` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe)
-- [`uniq_values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
-- [`values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#values-stats)
 
 #### Conditional unroll
 
@@ -4128,6 +4172,7 @@ _time:5m | unroll if (value_type:="json_array") (value)
 LogsQL supports the following functions for [`running_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe):
 
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-running_stats) returns the number of log entries.
+- [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-running_stats) returns the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value for the log entry with the previously seen [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field). It is useful for the comparison of field values in a sequence of `_time`-ordered logs.
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-running_stats) returns the maximum value over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-running_stats) returns the minimum value over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`sum`](https://docs.victoriametrics.com/victorialogs/logsql/#sum-running_stats) returns the sum for the given numeric [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -4169,6 +4214,17 @@ See also:
 - [`sum`](https://docs.victoriametrics.com/victorialogs/logsql/#sum-running_stats)
 - [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-running_stats)
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-running_stats)
+
+### last running_stats
+
+`last(fieldName)` [`running_stats` pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe-functions) returns the value for the given `fieldName`
+[field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) for the log with the maximum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+across already processed logs. For example, the following query adds the `prev_time` field to the selected logs with the `_time` field value for the previously processed log
+for the last 5 minutes:
+
+```logsql
+_time:5m | running_stats last(_time) offset 1 as prev_time
+```
 
 ### max running_stats
 
@@ -4238,6 +4294,8 @@ See also:
 LogsQL supports the following functions for [`total_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe):
 
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-total_stats) returns the number of log entries.
+- [`first`](https://docs.victoriametrics.com/victorialogs/logsql/#first-total_stats) returns the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value for the log entry with the minimum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+- [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-total_stats) returns the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value for the log entry with the maximum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-total_stats) returns the maximum value over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-total_stats) returns the minimum value over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`sum`](https://docs.victoriametrics.com/victorialogs/logsql/#sum-total_stats) returns the sum for the given numeric [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -4279,6 +4337,49 @@ See also:
 - [`sum`](https://docs.victoriametrics.com/victorialogs/logsql/#sum-total_stats)
 - [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-total_stats)
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-total_stats)
+
+### first total_stats
+
+`first(fieldName)` [`total_stats` pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe-functions) returns the value for the given `fieldName`
+[field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) for the log with the minimum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+across the selected logs. For example, the following query adds the `first_event` field to the selected logs with the `event` field value for the minimum `_time` over the logs
+for the last 5 minutes:
+
+```logsql
+_time:5m | total_stats first(event) first_event
+```
+
+It is possible to return the field value from the second, third, etc. log entry with the `offset` modifier. For example, the following query selects the second event instead of the first event:
+
+```logsql
+_time:5m | total_stats first(event) offset 1 second_event
+```
+
+See also:
+
+- [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-total_stats)
+
+### last total_stats
+
+`last(fieldName)` [`total_stats` pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe-functions) returns the value for the given `fieldName`
+[field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) for the log with the maximum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+across the selected logs. For example, the following query adds the `last_event` field to the selected logs with the `event` field value for the maximum `_time` over the logs
+for the last 5 minutes:
+
+```logsql
+_time:5m | total_stats last(event) last_event
+```
+
+It is possible to return the field value from the second, third, etc. log entry before the end with the `offset` modifier.
+For example, the following query selects the second event from the end instead of the last event:
+
+```logsql
+_time:5m | total_stats last(event) offset 1 prev_event
+```
+
+See also:
+
+- [`first`](https://docs.victoriametrics.com/victorialogs/logsql/#first-total_stats)
 
 ### max total_stats
 
@@ -4347,11 +4448,14 @@ See also:
 
 LogsQL supports the following functions for [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe):
 
+- [`any`](https://docs.victoriametrics.com/victorialogs/logsql/#any-stats) returns a sample of the [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
 - [`avg`](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats) returns the average value over the given numeric [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats) returns the number of log entries.
 - [`count_empty`](https://docs.victoriametrics.com/victorialogs/logsql/#count_empty-stats) returns the number logs with empty [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`count_uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats) returns the number of unique non-empty values for the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats) returns the number of unique hashes for non-empty values at the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`field_max`](https://docs.victoriametrics.com/victorialogs/logsql/#field_max-stats) returns the [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value from log entry with the maximum value at the given field.
+- [`field_min`](https://docs.victoriametrics.com/victorialogs/logsql/#field_min-stats) returns the [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value from log entry with the minimum value at the given field.
 - [`histogram`](https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats) returns [VictoriaMetrics histogram](https://valyala.medium.com/improving-histogram-usability-for-prometheus-and-grafana-bc7e5df0e350) for the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`json_values`](https://docs.victoriametrics.com/victorialogs/logsql/#json_values-stats) returns JSON-encoded logs as JSON array.
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-stats) returns the maximum value over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -4363,10 +4467,27 @@ LogsQL supports the following functions for [`stats` pipe](https://docs.victoria
 - [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats) returns a sample [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) for each selected [stats group](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-fields).
 - [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats) returns the [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with the maximum value at the given field.
 - [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats) returns the [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with the minimum value at the given field.
+- [`stddev`](https://docs.victoriametrics.com/victorialogs/logsql/#stddev-stats) returns the [standard deviation](https://en.wikipedia.org/wiki/Standard_deviation) for the given numeric [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`sum`](https://docs.victoriametrics.com/victorialogs/logsql/#sum-stats) returns the sum for the given numeric [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`sum_len`](https://docs.victoriametrics.com/victorialogs/logsql/#sum_len-stats) returns the sum of lengths for the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`uniq_values`](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats) returns unique non-empty values for the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`values`](https://docs.victoriametrics.com/victorialogs/logsql/#values-stats) returns all the values for the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+
+### any stats
+
+`any(field)` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions) returns a sample of `field` value.
+
+For example, the following query returns a sample of `url` value per each `host`:
+
+```logsql
+_time:5m | stats by (host) any(url) as sample_url
+```
+
+See also:
+
+- [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats)
+- [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-stats)
+- [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-stats)
 
 ### avg stats
 
@@ -4392,10 +4513,7 @@ See also:
 
 - [`median`](https://docs.victoriametrics.com/victorialogs/logsql/#median-stats)
 - [`quantile`](https://docs.victoriametrics.com/victorialogs/logsql/#quantile-stats)
-- [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-stats)
-- [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-stats)
-- [`sum`](https://docs.victoriametrics.com/victorialogs/logsql/#sum-stats)
-- [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats)
+- [`stddev`](https://docs.victoriametrics.com/victorialogs/logsql/#stddev-stats)
 
 ### count stats
 
@@ -4523,6 +4641,40 @@ See also:
 - [`uniq_values`](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats)
 
+### field_max stats
+
+`field_max(maxField, field)` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions) returns the `field` value from the log entry
+with the maximum value at the `maxField`.
+
+For example, the following query returns the `url` value from the log entry with the maximum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) per each `host`:
+
+```logsql
+_time:5m | stats by (host) field_max(_time, url) as last_url
+```
+
+See also:
+
+- [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats)
+- [`field_min`](https://docs.victoriametrics.com/victorialogs/logsql/#field_min-stats)
+- [`any`](https://docs.victoriametrics.com/victorialogs/logsql/#any-stats)
+
+### field_min stats
+
+`field_min(minField, field)` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions) returns the `field` value from the log entry
+with the minimum value at the `minField`.
+
+For example, the following query returns the `url` value from the log entry with the minimum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) per each `host`:
+
+```logsql
+_time:5m | stats by (host) field_min(_time, url) as first_url
+```
+
+See also:
+
+- [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
+- [`field_max`](https://docs.victoriametrics.com/victorialogs/logsql/#field_max-stats)
+- [`any`](https://docs.victoriametrics.com/victorialogs/logsql/#any-stats)
+
 ### histogram stats
 
 `histogram(field)` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions) returns [VictoriaMetrics histogram buckets](https://valyala.medium.com/improving-histogram-usability-for-prometheus-and-grafana-bc7e5df0e350)
@@ -4638,6 +4790,7 @@ It is possible to calculate the maximum value across all the fields with common 
 
 See also:
 
+- [`field_max`](https://docs.victoriametrics.com/victorialogs/logsql/#field_max-stats)
 - [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats)
 - [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-stats)
 - [`quantile`](https://docs.victoriametrics.com/victorialogs/logsql/#quantile-stats)
@@ -4666,6 +4819,7 @@ See also:
 
 - [`quantile`](https://docs.victoriametrics.com/victorialogs/logsql/#quantile-stats)
 - [`avg`](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats)
+- [`stddev`](https://docs.victoriametrics.com/victorialogs/logsql/#stddev-stats)
 
 ### min stats
 
@@ -4690,6 +4844,7 @@ It is possible to find the minimum across all the fields with common prefix via 
 
 See also:
 
+- [`field_min`](https://docs.victoriametrics.com/victorialogs/logsql/#field_min-stats)
 - [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-stats)
 - [`quantile`](https://docs.victoriametrics.com/victorialogs/logsql/#quantile-stats)
@@ -4766,7 +4921,8 @@ See also:
 ### row_any stats
 
 `row_any()` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions) returns an arbitrary [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
-(aka sample) for each selected [stats group](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-fields). The log entry is returned as a JSON-encoded dictionary with all the fields from the original log.
+(aka sample) for each selected [stats group](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-fields). The log entry is returned
+as a JSON-encoded dictionary with all the fields from the original log.
 
 For example, the following query returns a sample log entry for each [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
 across logs for the last 5 minutes:
@@ -4788,6 +4944,7 @@ It is possible to return all the fields starting with particular prefix by using
 
 See also:
 
+- [`any`](https://docs.victoriametrics.com/victorialogs/logsql/#any-stats)
 - [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats)
 - [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
 - [`json_values`](https://docs.victoriametrics.com/victorialogs/logsql/#json_values-stats)
@@ -4820,6 +4977,7 @@ It is possible to return all the fields starting with particular prefix by using
 See also:
 
 - [`max`](https://docs.victoriametrics.com/victorialogs/logsql/#max-stats)
+- [`field_max`](https://docs.victoriametrics.com/victorialogs/logsql/#field_max-stats)
 - [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
 - [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats)
 - [`json_values`](https://docs.victoriametrics.com/victorialogs/logsql/#json_values-stats)
@@ -4852,9 +5010,31 @@ It is possible to return all the fields starting with particular prefix by using
 See also:
 
 - [`min`](https://docs.victoriametrics.com/victorialogs/logsql/#min-stats)
+- [`field_min`](https://docs.victoriametrics.com/victorialogs/logsql/#field_min-stats)
 - [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats)
 - [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats)
 - [`json_values`](https://docs.victoriametrics.com/victorialogs/logsql/#json_values-stats)
+
+### stddev stats
+
+`stddev(field1, ..., fieldN)` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions)
+calculates [standard deviation](https://en.wikipedia.org/wiki/Standard_deviation) over the numeric value across
+all the mentioned [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+Non-numeric values are skipped. If all the values across `field1`, ..., `fieldN` are non-numeric, then `NaN` is returned.
+
+For example, the following query returns standard deviation for the `duration` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+over logs for the last 5 minutes:
+
+```logsql
+_time:5m | stats stddev(duration) stddev_duration
+```
+
+It is possible to find the standard deviation for all the fieldw tih common prefix via `stddev(prefix*)` syntax.
+
+See also:
+
+- [`avg`](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats)
+- [`median`](https://docs.victoriametrics.com/victorialogs/logsql/#median-stats)
 
 ### sum stats
 
