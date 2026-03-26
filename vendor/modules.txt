@@ -114,7 +114,7 @@ github.com/blevesearch/zapx/v15
 # github.com/blevesearch/zapx/v16 v16.2.7
 ## explicit; go 1.23
 github.com/blevesearch/zapx/v16
-# github.com/buger/jsonparser v1.1.1
+# github.com/buger/jsonparser v1.1.2
 ## explicit; go 1.13
 github.com/buger/jsonparser
 # github.com/dlclark/regexp2 v1.10.0
