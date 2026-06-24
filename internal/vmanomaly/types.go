@@ -82,6 +82,30 @@ type ModelValidationResponse struct {
 	ModelSpec map[string]any `json:"model_spec"` // Validated full model configuration
 }
 
+// ServerModelsResponse represents configured runtime models on the vmanomaly server.
+type ServerModelsResponse struct {
+	Models map[string]ServerModelResponse `json:"models"` // Models keyed by configured alias
+}
+
+// ServerModelResponse represents a configured runtime model.
+type ServerModelResponse struct {
+	ModelConfiguration map[string]any      `json:"model_configuration"` // Model configuration object
+	Queries            []ServerQueryConfig `json:"queries"`             // Attached query configurations
+	IsOnline           bool                `json:"is_online"`           // Whether the model is online
+	IsMultivariate     bool                `json:"is_multivariate"`     // Whether the model is multivariate
+	IsUISelectable     bool                `json:"is_ui_selectable"`    // Whether the model can be selected in UI
+}
+
+// ServerQueryConfig represents a query attached to a configured server model.
+type ServerQueryConfig struct {
+	Expr              string  `json:"expr"`                           // Query expression
+	TZ                *string `json:"tz,omitempty"`                   // Optional timezone
+	TenantID          *string `json:"tenant_id,omitempty"`            // Optional tenant ID
+	Offset            *string `json:"offset,omitempty"`               // Optional query offset
+	Step              *string `json:"step,omitempty"`                 // Optional query step
+	MaxPointsPerQuery *int    `json:"max_points_per_query,omitempty"` // Optional maximum points per query
+}
+
 // ModelClassEnum represents available model types
 type ModelClassEnum string
 

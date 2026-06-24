@@ -365,13 +365,14 @@ MCP vmanomaly provides tools organized into categories:
 | `vmanomaly_get_buildinfo`  | Get build information (version, build time, Go version) |
 | `vmanomaly_get_metrics`    | Get vmanomaly server metrics in Prometheus format       |
 
-#### Model Configuration (3 tools)
+#### Model Configuration (4 tools)
 
-| Tool                              | Description                                      |
-|-----------------------------------|--------------------------------------------------|
-| `vmanomaly_list_models`           | List all available anomaly detection model types |
-| `vmanomaly_get_model_schema`      | Get JSON schema for a specific model type        |
-| `vmanomaly_validate_model_config` | Validate model configuration before using it     |
+| Tool                              | Description                                             |
+|-----------------------------------|---------------------------------------------------------|
+| `vmanomaly_list_models`           | List all available anomaly detection model types        |
+| `vmanomaly_get_server_models`     | Get configured server models and their query attachments |
+| `vmanomaly_get_model_schema`      | Get JSON schema for a specific model type               |
+| `vmanomaly_validate_model_config` | Validate model configuration before using it            |
 
 #### Configuration (1 tool)
 

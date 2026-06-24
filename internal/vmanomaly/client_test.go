@@ -160,6 +160,85 @@ func TestClient_ListModels(t *testing.T) {
 	}
 }
 
+func TestClient_GetServerModels(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		response   string
+		wantErr    bool
+		wantCount  int
+		wantAlias  string
+	}{
+		{
+			name:       "success with configured model",
+			statusCode: 200,
+			response:   `{"models":{"app_latency":{"model_configuration":{"class":"zscore","z_threshold":3},"queries":[{"expr":"histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))","tz":"UTC","tenant_id":"0:0","offset":"1h","step":"1m","max_points_per_query":1000}],"is_online":false,"is_multivariate":false,"is_ui_selectable":true}}}`,
+			wantErr:    false,
+			wantCount:  1,
+			wantAlias:  "app_latency",
+		},
+		{
+			name:       "empty models",
+			statusCode: 200,
+			response:   `{"models":{}}`,
+			wantErr:    false,
+			wantCount:  0,
+		},
+		{
+			name:       "invalid json",
+			statusCode: 200,
+			response:   `{invalid}`,
+			wantErr:    true,
+		},
+		{
+			name:       "500 error",
+			statusCode: 500,
+			response:   `{"error":"internal error"}`,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				assertEqual(t, r.URL.Path, "/api/v1/server/models")
+				assertEqual(t, r.Method, http.MethodGet)
+				w.WriteHeader(tt.statusCode)
+				_, _ = w.Write([]byte(tt.response))
+			})
+			defer server.Close()
+
+			result, err := client.GetServerModels(context.Background())
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetServerModels() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				if len(result.Models) != tt.wantCount {
+					t.Errorf("models count = %v, want %v", len(result.Models), tt.wantCount)
+				}
+				if tt.wantAlias != "" {
+					model, ok := result.Models[tt.wantAlias]
+					if !ok {
+						t.Fatalf("expected model alias %q in response", tt.wantAlias)
+					}
+					if model.ModelConfiguration["class"] != "zscore" {
+						t.Errorf("model class = %v, want zscore", model.ModelConfiguration["class"])
+					}
+					if len(model.Queries) != 1 {
+						t.Fatalf("queries count = %v, want 1", len(model.Queries))
+					}
+					if model.Queries[0].Expr == "" {
+						t.Error("expected query expr to be populated")
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestClient_GetModelSchema(t *testing.T) {
 	tests := []struct {
 		name       string
