@@ -89,20 +89,23 @@ type ServerModelsResponse struct {
 
 // ServerModelResponse represents a configured runtime model.
 type ServerModelResponse struct {
-	ModelConfiguration map[string]any      `json:"model_configuration"` // Model configuration object
-	Queries            []ServerQueryConfig `json:"queries"`             // Attached query configurations
-	IsOnline           bool                `json:"is_online"`           // Whether the model is online
-	IsMultivariate     bool                `json:"is_multivariate"`     // Whether the model is multivariate
-	IsUISelectable     bool                `json:"is_ui_selectable"`    // Whether the model can be selected in UI
+	ModelConfiguration map[string]any               `json:"model_configuration"` // Model configuration object
+	Queries            map[string]ServerQueryConfig `json:"queries"`             // Query configs keyed by alias
+	IsOnline           bool                         `json:"is_online"`           // Whether the model is online
+	IsMultivariate     bool                         `json:"is_multivariate"`     // Whether the model is multivariate
+	IsUISelectable     bool                         `json:"is_ui_selectable"`    // Whether the model can be selected in UI
 }
+
+// ServerModelQueriesResponse represents full query configurations keyed by query alias.
+type ServerModelQueriesResponse map[string]ServerQueryConfig
 
 // ServerQueryConfig represents a query attached to a configured server model.
 type ServerQueryConfig struct {
 	Expr              string  `json:"expr"`                           // Query expression
-	TZ                *string `json:"tz,omitempty"`                   // Optional timezone
+	TZ                string  `json:"tz"`                             // Query timezone
 	TenantID          *string `json:"tenant_id,omitempty"`            // Optional tenant ID
-	Offset            *string `json:"offset,omitempty"`               // Optional query offset
-	Step              *string `json:"step,omitempty"`                 // Optional query step
+	Offset            string  `json:"offset"`                         // Query offset
+	Step              string  `json:"step"`                           // Query step
 	MaxPointsPerQuery *int    `json:"max_points_per_query,omitempty"` // Optional maximum points per query
 }
 
