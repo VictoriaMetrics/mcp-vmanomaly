@@ -107,6 +107,21 @@ func (c *Client) ListModels(ctx context.Context) (*ModelsListResponse, error) {
 	return &result, nil
 }
 
+// GetServerModels returns configured runtime models from the vmanomaly server
+func (c *Client) GetServerModels(ctx context.Context) (*ServerModelsResponse, error) {
+	respBody, err := c.doRequest(ctx, http.MethodGet, "/api/v1/server/models", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ServerModelsResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, nil
+}
+
 func (c *Client) GetModelSchema(ctx context.Context, modelClass string) (map[string]any, error) {
 	path := fmt.Sprintf("/api/v1/model/schema?model_class=%s", modelClass)
 	respBody, err := c.doRequest(ctx, http.MethodGet, path, nil)

@@ -12,6 +12,7 @@ type MockClient struct {
 	GetHealthFunc           func(ctx context.Context) (map[string]any, error)
 	GetBuildInfoFunc        func(ctx context.Context) (map[string]any, error)
 	ListModelsFunc          func(ctx context.Context) (*vmanomaly.ModelsListResponse, error)
+	GetServerModelsFunc     func(ctx context.Context) (*vmanomaly.ServerModelsResponse, error)
 	GetModelSchemaFunc      func(ctx context.Context, modelClass string) (map[string]any, error)
 	ValidateModelFunc       func(ctx context.Context, modelSpec map[string]any) (*vmanomaly.ModelValidationResponse, error)
 	GenerateConfigFunc      func(ctx context.Context, req *vmanomaly.ConfigGenerationRequest) (string, error)
@@ -40,6 +41,13 @@ func (m *MockClient) GetBuildInfo(ctx context.Context) (map[string]any, error) {
 func (m *MockClient) ListModels(ctx context.Context) (*vmanomaly.ModelsListResponse, error) {
 	if m.ListModelsFunc != nil {
 		return m.ListModelsFunc(ctx)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *MockClient) GetServerModels(ctx context.Context) (*vmanomaly.ServerModelsResponse, error) {
+	if m.GetServerModelsFunc != nil {
+		return m.GetServerModelsFunc(ctx)
 	}
 	return nil, errors.New("not implemented")
 }

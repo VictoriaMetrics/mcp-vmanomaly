@@ -43,6 +43,18 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 	)
 	s.AddTool(listModelsTool, handleListModels(client))
 
+	getServerModelsTool := mcp.NewTool(
+		"vmanomaly_get_server_models",
+		mcp.WithDescription("Get configured server models and their query attachments. Returns runtime model aliases, model configuration, attached queries, and model metadata from the vmanomaly server."),
+		mcp.WithToolAnnotation(mcp.ToolAnnotation{
+			Title:           "Get Server Models",
+			ReadOnlyHint:    ptr(true),
+			DestructiveHint: ptr(false),
+			OpenWorldHint:   ptr(false),
+		}),
+	)
+	s.AddTool(getServerModelsTool, handleGetServerModels(client))
+
 	getModelSchemaTool := mcp.NewTool(
 		"vmanomaly_get_model_schema",
 		mcp.WithDescription("Get the complete JSON schema for a specific anomaly detection model type. Returns all configuration parameters, types, validation rules, default values, and descriptions. Use this after vmanomaly_list_models to understand how to configure a specific model before calling vmanomaly_validate_model_config or vmanomaly_create_detection_task."),
@@ -83,6 +95,22 @@ func handleListModels(client *vmanomaly.Client) server.ToolHandlerFunc {
 		}
 
 		// Format response
+		responseJSON, err := json.MarshalIndent(models, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(string(responseJSON)), nil
+	}
+}
+
+func handleGetServerModels(client *vmanomaly.Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		models, err := client.GetServerModels(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get server models: %v", err)), nil
+		}
+
 		responseJSON, err := json.MarshalIndent(models, "", "  ")
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
