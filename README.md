@@ -357,13 +357,14 @@ But it's not required, you can just start asking questions and the assistant wil
 
 MCP vmanomaly provides tools organized into categories:
 
-#### Health & Info (3 tools)
+#### Health & Info (4 tools)
 
-| Tool                       | Description                                             |
-|----------------------------|---------------------------------------------------------|
-| `vmanomaly_health_check`   | Check vmanomaly server health status                    |
-| `vmanomaly_get_buildinfo`  | Get build information (version, build time, Go version) |
-| `vmanomaly_get_metrics`    | Get vmanomaly server metrics in Prometheus format       |
+| Tool                           | Description                                             |
+|--------------------------------|---------------------------------------------------------|
+| `vmanomaly_health_check`       | Check vmanomaly server health status                    |
+| `vmanomaly_get_buildinfo`      | Get build information (version, build time, Go version) |
+| `vmanomaly_get_server_queries` | Get configured server query aliases and expressions     |
+| `vmanomaly_get_metrics`        | Get vmanomaly server metrics in Prometheus format       |
 
 #### Model Configuration (4 tools)
 

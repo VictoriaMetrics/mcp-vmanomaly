@@ -30,6 +30,18 @@ func RegisterInfoTools(s *server.MCPServer, client *vmanomaly.Client) {
 	)
 	s.AddTool(getBuildinfoTool, handleGetBuildinfo(client))
 
+	getQueriesTool := mcp.NewTool(
+		"vmanomaly_get_server_queries",
+		mcp.WithDescription("Get query aliases and MetricsQL/LogsQL expressions configured on the running vmanomaly server."),
+		mcp.WithToolAnnotation(mcp.ToolAnnotation{
+			Title:           "Get vmanomaly Server Queries",
+			ReadOnlyHint:    ptr(true),
+			DestructiveHint: ptr(false),
+			OpenWorldHint:   ptr(false),
+		}),
+	)
+	s.AddTool(getQueriesTool, handleGetServerQueries(client))
+
 	getMetricsTool := mcp.NewTool(
 		"vmanomaly_get_metrics",
 		mcp.WithDescription("Get currently instant Prometheus-formatted self-monitoring metrics from vmanomaly server. Returns operational metrics including reader/writer performance, model execution stats, system info, and resource usage. Output is in standard Prometheus text exposition format suitable for scraping or monitoring analysis."),
@@ -60,6 +72,23 @@ func handleGetBuildinfo(client *vmanomaly.Client) server.ToolHandlerFunc {
 		}
 
 		resultMsg := fmt.Sprintf("vmanomaly Build Information:\n\n%s", string(responseJSON))
+		return mcp.NewToolResultText(resultMsg), nil
+	}
+}
+
+func handleGetServerQueries(client *vmanomaly.Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		queries, err := client.GetServerQueries(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get configured queries: %v", err)), nil
+		}
+
+		responseJSON, err := json.MarshalIndent(queries, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
+		}
+
+		resultMsg := fmt.Sprintf("vmanomaly Configured Queries:\n\n%s", string(responseJSON))
 		return mcp.NewToolResultText(resultMsg), nil
 	}
 }

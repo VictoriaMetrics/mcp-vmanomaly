@@ -172,7 +172,7 @@ func TestClient_GetServerModels(t *testing.T) {
 		{
 			name:       "success with configured model",
 			statusCode: 200,
-			response:   `{"models":{"app_latency":{"model_configuration":{"class":"zscore","z_threshold":3},"queries":[{"expr":"histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))","tz":"UTC","tenant_id":"0:0","offset":"1h","step":"1m","max_points_per_query":1000}],"is_online":false,"is_multivariate":false,"is_ui_selectable":true}}}`,
+			response:   `{"models":{"app_latency":{"model_configuration":{"class":"zscore","z_threshold":3},"queries":{"latency_p99":{"expr":"histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))","tz":"UTC","tenant_id":"0:0","offset":"1h","step":"1m","max_points_per_query":1000}},"is_online":false,"is_multivariate":false,"is_ui_selectable":true}}}`,
 			wantErr:    false,
 			wantCount:  1,
 			wantAlias:  "app_latency",
@@ -230,8 +230,27 @@ func TestClient_GetServerModels(t *testing.T) {
 					if len(model.Queries) != 1 {
 						t.Fatalf("queries count = %v, want 1", len(model.Queries))
 					}
-					if model.Queries[0].Expr == "" {
-						t.Error("expected query expr to be populated")
+					query, ok := model.Queries["latency_p99"]
+					if !ok {
+						t.Fatal("expected query alias latency_p99 in response")
+					}
+					if query.Expr == "" {
+						t.Error("expected aliased query expr to be populated")
+					}
+					if query.TZ != "UTC" {
+						t.Errorf("query tz = %v, want UTC", query.TZ)
+					}
+					if query.TenantID == nil || *query.TenantID != "0:0" {
+						t.Errorf("query tenant_id = %v, want 0:0", query.TenantID)
+					}
+					if query.Offset != "1h" {
+						t.Errorf("query offset = %v, want 1h", query.Offset)
+					}
+					if query.Step != "1m" {
+						t.Errorf("query step = %v, want 1m", query.Step)
+					}
+					if query.MaxPointsPerQuery == nil || *query.MaxPointsPerQuery != 1000 {
+						t.Errorf("query max_points_per_query = %v, want 1000", query.MaxPointsPerQuery)
 					}
 				}
 			}
