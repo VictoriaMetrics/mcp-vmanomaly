@@ -109,6 +109,9 @@ type ServerQueryConfig struct {
 	MaxPointsPerQuery *int    `json:"max_points_per_query,omitempty"` // Optional maximum points per query
 }
 
+// ServerQueriesResponse represents configured reader queries keyed by alias.
+type ServerQueriesResponse map[string]string
+
 // ModelClassEnum represents available model types
 type ModelClassEnum string
 

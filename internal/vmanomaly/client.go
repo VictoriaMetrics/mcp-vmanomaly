@@ -291,6 +291,20 @@ func (c *Client) GetBuildInfo(ctx context.Context) (map[string]any, error) {
 	return result, nil
 }
 
+func (c *Client) GetServerQueries(ctx context.Context) (ServerQueriesResponse, error) {
+	respBody, err := c.doRequest(ctx, http.MethodGet, "/api/v1/server/queries", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ServerQueriesResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result, nil
+}
+
 func (c *Client) ValidateConfig(ctx context.Context, config map[string]any) (*OkValidationResponse, error) {
 	respBody, err := c.doRequest(ctx, http.MethodPost, "/api/v1/config/validate", config)
 	if err != nil {
