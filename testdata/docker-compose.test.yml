@@ -7,7 +7,7 @@ services:
       - '--storageDataPath=/victoria-metrics-data'
       - '--httpListenAddr=:8428'
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8428/health"]
+      test: ["CMD", "/victoria-metrics-prod", "-version"]
       interval: 3s
       timeout: 2s
       retries: 10
@@ -16,16 +16,20 @@ services:
       - vmanomaly-test
 
   vmanomaly:
-    image: victoriametrics/vmanomaly:latest
+    image: victoriametrics/vmanomaly:v1.30.0
     ports:
       - "8490:8490"
+    command: ["/etc/vmanomaly/config.yml"]
     environment:
-      - VMANOMALY_DATASOURCE_URL=http://victoriametrics:8428
+      VM_LICENSE_FILE: /etc/vmanomaly/license
+    volumes:
+      - ./vmanomaly-test.yml:/etc/vmanomaly/config.yml:ro
+      - ${VMANOMALY_LICENSE_FILE}:/etc/vmanomaly/license:ro
     depends_on:
       victoriametrics:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8490/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8490/health')"]
       interval: 3s
       timeout: 2s
       retries: 10

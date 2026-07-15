@@ -17,12 +17,12 @@ import (
 
 // GetModelSchemaArgs defines arguments for get_model_schema tool
 type GetModelSchemaArgs struct {
-	ModelClass string `json:"model_class" jsonschema:"required,enum=zscore,enum=prophet,enum=mad,enum=holtwinters,enum=std,enum=rolling_quantile,enum=isolation_forest_univariate,enum=mad_online,enum=zscore_online,enum=quantile_online,enum=auto,description=Model type to retrieve schema for. Valid values: 'zscore' (statistical z-score) 'prophet' (Facebook Prophet for seasonality) 'mad' (Median Absolute Deviation) 'holtwinters' (triple exponential smoothing) 'std' (standard deviation) 'rolling_quantile' (quantile-based detection) 'isolation_forest_univariate' (ML-based isolation) 'mad_online' (streaming MAD) 'zscore_online' (streaming z-score) 'quantile_online' (streaming quantile) 'auto' (automatic model selection). Use vmanomaly_list_models to see all available types first."`
+	ModelClass string `json:"model_class" jsonschema:"required,description=UI-compatible model class or alias returned by vmanomaly_list_models. Multivariate models are intentionally unavailable from this UI-oriented schema endpoint."`
 }
 
 // ValidateModelConfigArgs defines arguments for validate_model_config tool
 type ValidateModelConfigArgs struct {
-	ModelSpec map[string]any `json:"model_spec" jsonschema:"required,description=Model configuration object to validate. Must include 'class' field specifying model type (e.g. 'prophet' 'zscore' 'holtwinters') plus model-specific parameters. Use vmanomaly_get_model_schema first to see required and optional parameters for your chosen model type. Returns validation result with normalized config or detailed error messages for invalid parameters."`
+	ModelSpec map[string]any `json:"model_spec" jsonschema:"required,description=Model configuration object to validate. Must include 'class' plus model-specific parameters. Use vmanomaly_get_model_schema for UI-compatible univariate models. For documented multivariate models outside VMUI use documentation and this validation endpoint because UI discovery/schema intentionally hides them. Returns normalized config or detailed validation errors."`
 }
 
 // ============================================================================
@@ -33,7 +33,7 @@ type ValidateModelConfigArgs struct {
 func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 	listModelsTool := mcp.NewTool(
 		"vmanomaly_list_models",
-		mcp.WithDescription("List all available anomaly detection model types supported by vmanomaly. Returns model names that can be used in model configurations. Use this as the first step when selecting a model, then call vmanomaly_get_model_schema to see parameters for your chosen model."),
+		mcp.WithDescription("List model types exposed to VMUI and other UI-oriented configuration flows. Use this before selecting a model in UI, then call vmanomaly_get_model_schema. Multivariate models are intentionally omitted from this list; outside VMUI, documented multivariate aliases can still be autotuned and validated as complete model configurations."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
 			Title:           "Vmanomaly List Models",
 			ReadOnlyHint:    ptr(true),
@@ -57,7 +57,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 
 	getModelSchemaTool := mcp.NewTool(
 		"vmanomaly_get_model_schema",
-		mcp.WithDescription("Get the complete JSON schema for a specific anomaly detection model type. Returns all configuration parameters, types, validation rules, default values, and descriptions. Use this after vmanomaly_list_models to understand how to configure a specific model before calling vmanomaly_validate_model_config or vmanomaly_create_detection_task."),
+		mcp.WithDescription("Get the complete JSON schema for a UI-compatible model type returned by vmanomaly_list_models. Returns parameters, types, validation rules, defaults, and descriptions. Multivariate models are intentionally unavailable from this UI-oriented endpoint; configure them outside VMUI using documentation and validate the complete model config."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
 			Title:           "Get Model Schema",
 			ReadOnlyHint:    ptr(true),

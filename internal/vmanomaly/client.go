@@ -20,12 +20,16 @@ type Client struct {
 }
 
 func NewClient(baseURL, bearerToken string, customHeaders map[string]string) *Client {
+	return NewClientWithTimeout(baseURL, bearerToken, customHeaders, 30*time.Second)
+}
+
+func NewClientWithTimeout(baseURL, bearerToken string, customHeaders map[string]string, requestTimeout time.Duration) *Client {
 	return &Client{
 		baseURL:       baseURL,
 		bearerToken:   bearerToken,
 		customHeaders: customHeaders,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: requestTimeout,
 		},
 	}
 }
@@ -262,14 +266,135 @@ func (c *Client) GetDetectionLimits(ctx context.Context) (*AnomalyDetectionLimit
 // Query Methods
 // ============================================================================
 
-// Query executes a PromQL query against the datasource
+// Query executes a PromQL query against the datasource.
 func (c *Client) Query(ctx context.Context, req *QueryRequest) (map[string]any, error) {
-	respBody, err := c.doRequest(ctx, http.MethodPost, "/api/v1/query", req)
+	values := url.Values{}
+	values.Set("query", req.Query)
+	if req.Start != nil {
+		values.Set("start", fmt.Sprintf("%g", *req.Start))
+	}
+	if req.End != nil {
+		values.Set("end", fmt.Sprintf("%g", *req.End))
+	}
+	if req.Step != "" {
+		values.Set("step", req.Step)
+	}
+	if req.DatasourceType != "" {
+		values.Set("datasource_type", req.DatasourceType)
+	}
+	if req.DatasourceURL != nil {
+		values.Set("datasource_url", *req.DatasourceURL)
+	}
+	if req.TenantID != nil {
+		values.Set("tenant_id", *req.TenantID)
+	}
+	if req.NoCache != nil {
+		values.Set("nocache", *req.NoCache)
+	}
+	if req.PassAuthHeaders {
+		values.Set("pass_auth_headers", "true")
+	}
+
+	respBody, err := c.doRequest(ctx, http.MethodGet, "/api/v1/query?"+values.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var result map[string]any
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result, nil
+}
+
+func (c *Client) TimeseriesCharacteristics(ctx context.Context, req *TimeseriesCharacteristicsRequest) (map[string]any, error) {
+	values := url.Values{}
+	values.Set("query", req.Query)
+	if req.Start != nil {
+		values.Set("start", fmt.Sprintf("%g", *req.Start))
+	}
+	if req.End != nil {
+		values.Set("end", fmt.Sprintf("%g", *req.End))
+	}
+	if req.Step != "" {
+		values.Set("step", req.Step)
+	}
+	if req.DatasourceType != "" {
+		values.Set("datasource_type", req.DatasourceType)
+	}
+	if req.DatasourceURL != nil {
+		values.Set("datasource_url", *req.DatasourceURL)
+	}
+	if req.TenantID != nil {
+		values.Set("tenant_id", *req.TenantID)
+	}
+	if req.PassAuthHeaders {
+		values.Set("pass_auth_headers", "true")
+	}
+	if req.Timezone != nil {
+		values.Set("timezone", *req.Timezone)
+	}
+	if req.ShortGapSteps != nil {
+		values.Set("short_gap_steps", fmt.Sprintf("%d", *req.ShortGapSteps))
+	}
+	if req.Verbose {
+		values.Set("verbose", "true")
+	}
+	if req.Limit != nil {
+		values.Set("limit", fmt.Sprintf("%d", *req.Limit))
+	}
+
+	respBody, err := c.doRequest(ctx, http.MethodGet, "/api/v1/timeseries/characteristics?"+values.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result, nil
+}
+
+func (c *Client) CreateAutotuneTask(ctx context.Context, req *AutotuneTaskRequest) (*AutotuneTaskResponse, error) {
+	respBody, err := c.doRequest(ctx, http.MethodPost, "/api/v1/autotune/tasks", req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result AutotuneTaskResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (c *Client) GetAutotuneTask(ctx context.Context, taskID string) (*AutotuneTaskStatus, error) {
+	path := fmt.Sprintf("/api/v1/autotune/tasks/%s", taskID)
+	respBody, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result AutotuneTaskStatus
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (c *Client) CancelAutotuneTask(ctx context.Context, taskID string) (map[string]bool, error) {
+	path := fmt.Sprintf("/api/v1/autotune/tasks/%s", taskID)
+	respBody, err := c.doRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]bool
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}

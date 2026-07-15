@@ -40,6 +40,14 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
+func TestNewClientWithTimeout(t *testing.T) {
+	client := NewClientWithTimeout("http://localhost:8490", "", nil, 45*time.Second)
+
+	if client.httpClient.Timeout != 45*time.Second {
+		t.Errorf("timeout = %v, want 45s", client.httpClient.Timeout)
+	}
+}
+
 func TestClient_GetHealth(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -716,20 +724,20 @@ func TestClient_ListTasks(t *testing.T) {
 
 func TestClient_CancelTask(t *testing.T) {
 	tests := []struct {
-		name         string
-		taskID       string
-		statusCode   int
-		response     string
-		wantErr      bool
-		wantCanceled bool
+		name       string
+		taskID     string
+		statusCode int
+		response   string
+		wantErr    bool
+		wantOK     bool
 	}{
 		{
-			name:         "success",
-			taskID:       "task-123",
-			statusCode:   200,
-			response:     `{"canceled":true}`,
-			wantErr:      false,
-			wantCanceled: true,
+			name:       "success",
+			taskID:     "task-123",
+			statusCode: 200,
+			response:   `{"ok":true}`,
+			wantErr:    false,
+			wantOK:     true,
 		},
 		{
 			name:       "404 not found",
@@ -766,8 +774,8 @@ func TestClient_CancelTask(t *testing.T) {
 				return
 			}
 
-			if !tt.wantErr && result["canceled"] != tt.wantCanceled {
-				t.Errorf("canceled = %v, want %v", result["canceled"], tt.wantCanceled)
+			if !tt.wantErr && result["ok"] != tt.wantOK {
+				t.Errorf("ok = %v, want %v", result["ok"], tt.wantOK)
 			}
 		})
 	}
@@ -874,8 +882,10 @@ func TestClient_Query(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 				assertEqual(t, r.URL.Path, "/api/v1/query")
-				assertEqual(t, r.Method, http.MethodPost)
-				assertEqual(t, r.Header.Get("Content-Type"), "application/json")
+				assertEqual(t, r.Method, http.MethodGet)
+				assertEqual(t, r.URL.Query().Get("query"), tt.request.Query)
+				assertEqual(t, r.URL.Query().Get("step"), tt.request.Step)
+				assertEqual(t, r.URL.Query().Get("datasource_type"), tt.request.DatasourceType)
 
 				w.WriteHeader(tt.statusCode)
 				_, _ = w.Write([]byte(tt.response))
@@ -893,6 +903,169 @@ func TestClient_Query(t *testing.T) {
 				t.Error("expected result to have 'status' field")
 			}
 		})
+	}
+}
+
+func TestClient_TimeseriesCharacteristics(t *testing.T) {
+	start := 1000.0
+	end := 2000.0
+	limit := 25
+	shortGapSteps := 3
+	timezone := "Europe/Warsaw"
+	datasourceURL := "http://victoriametrics:8428"
+	tenantID := "0"
+
+	req := &TimeseriesCharacteristicsRequest{
+		Query:           `sum(rate(http_requests_total[5m])) by (job)`,
+		Start:           &start,
+		End:             &end,
+		Step:            "5m",
+		DatasourceType:  "vm",
+		DatasourceURL:   &datasourceURL,
+		TenantID:        &tenantID,
+		PassAuthHeaders: true,
+		Timezone:        &timezone,
+		ShortGapSteps:   &shortGapSteps,
+		Limit:           &limit,
+	}
+
+	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		assertEqual(t, r.URL.Path, "/api/v1/timeseries/characteristics")
+		assertEqual(t, r.Method, http.MethodGet)
+
+		query := r.URL.Query()
+		assertEqual(t, query.Get("query"), req.Query)
+		assertEqual(t, query.Get("start"), "1000")
+		assertEqual(t, query.Get("end"), "2000")
+		assertEqual(t, query.Get("step"), "5m")
+		assertEqual(t, query.Get("datasource_type"), "vm")
+		assertEqual(t, query.Get("datasource_url"), datasourceURL)
+		assertEqual(t, query.Get("tenant_id"), tenantID)
+		assertEqual(t, query.Get("pass_auth_headers"), "true")
+		assertEqual(t, query.Get("timezone"), timezone)
+		assertEqual(t, query.Get("short_gap_steps"), "3")
+		assertEqual(t, query.Get("limit"), "25")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"characteristics"}}`))
+	})
+	defer server.Close()
+
+	result, err := client.TimeseriesCharacteristics(context.Background(), req)
+	if err != nil {
+		t.Fatalf("TimeseriesCharacteristics() error = %v", err)
+	}
+	if result["status"] != "success" {
+		t.Errorf("status = %v, want success", result["status"])
+	}
+}
+
+func TestClient_AutotuneTasks(t *testing.T) {
+	start := 1000.0
+	end := 2000.0
+	limit := 5
+	useProfileHints := true
+
+	req := &AutotuneTaskRequest{
+		Query:             `up`,
+		TunedClassName:    "mad_online",
+		AnomalyPercentage: 0.02,
+		Start:             &start,
+		End:               &end,
+		Step:              "15m",
+		DatasourceType:    "vm",
+		Limit:             &limit,
+		UseProfileHints:   &useProfileHints,
+		OptimizationParams: map[string]any{
+			"n_trials": float64(3),
+			"timeout":  float64(1),
+		},
+		FrozenParams: map[string]any{
+			"detection_direction": "above_expected",
+		},
+	}
+
+	requestCount := 0
+	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+
+		switch r.Method {
+		case http.MethodPost:
+			assertEqual(t, r.URL.Path, "/api/v1/autotune/tasks")
+			var got AutotuneTaskRequest
+			if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+				t.Fatalf("failed to decode request body: %v", err)
+			}
+			assertEqual(t, got.Query, req.Query)
+			assertEqual(t, got.TunedClassName, req.TunedClassName)
+			assertEqual(t, got.AnomalyPercentage, req.AnomalyPercentage)
+			assertEqual(t, *got.Start, start)
+			assertEqual(t, *got.End, end)
+			assertEqual(t, got.Step, req.Step)
+			assertEqual(t, got.DatasourceType, req.DatasourceType)
+			assertEqual(t, *got.Limit, limit)
+			assertEqual(t, *got.UseProfileHints, true)
+			assertEqual(t, got.FrozenParams["detection_direction"], "above_expected")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"task_id":"task-1","status":"running"}`))
+		case http.MethodGet:
+			assertEqual(t, r.URL.Path, "/api/v1/autotune/tasks/task-1")
+			_, _ = w.Write([]byte(`{"task_id":"task-1","status":"done","progress":100,"result_data":{"status":"success","data":{"resultType":"autotune_suggestion"}}}`))
+		case http.MethodDelete:
+			assertEqual(t, r.URL.Path, "/api/v1/autotune/tasks/task-1")
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		}
+	})
+	defer server.Close()
+
+	created, err := client.CreateAutotuneTask(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateAutotuneTask() error = %v", err)
+	}
+	if created.TaskID != "task-1" || created.Status != "running" {
+		t.Fatalf("created = %#v", created)
+	}
+	status, err := client.GetAutotuneTask(context.Background(), created.TaskID)
+	if err != nil {
+		t.Fatalf("GetAutotuneTask() error = %v", err)
+	}
+	if status.Status != "done" || status.ResultData["status"] != "success" {
+		t.Fatalf("status = %#v", status)
+	}
+	canceled, err := client.CancelAutotuneTask(context.Background(), created.TaskID)
+	if err != nil {
+		t.Fatalf("CancelAutotuneTask() error = %v", err)
+	}
+	if !canceled["ok"] || requestCount != 3 {
+		t.Fatalf("canceled = %#v, requestCount = %d", canceled, requestCount)
+	}
+}
+
+func TestClient_CreateAutotuneTaskPreservesZeroAnomalyPercentage(t *testing.T) {
+	req := &AutotuneTaskRequest{
+		Query:             "up",
+		TunedClassName:    "mad_online",
+		AnomalyPercentage: 0,
+	}
+
+	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode request body: %v", err)
+		}
+		value, exists := body["anomaly_percentage"]
+		if !exists {
+			t.Fatal("anomaly_percentage is missing from request body")
+		}
+		assertEqual(t, value, float64(0))
+
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"task_id":"task-1","status":"running"}`))
+	})
+	defer server.Close()
+
+	if _, err := client.CreateAutotuneTask(context.Background(), req); err != nil {
+		t.Fatalf("CreateAutotuneTask() error = %v", err)
 	}
 }
 

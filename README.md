@@ -14,7 +14,8 @@ This provides seamless integration with `vmanomaly` REST API and [documentation]
 This MCP server enables AI assistants like Claude to interact with `vmanomaly` for:
 
 - **Health Monitoring**: Check `vmanomaly` server health and build information
-- **Model Management**: List, validate, and configure anomaly detection models (like `zscore_online`, `prophet`, and more)
+- **Model Management**: Discover UI-compatible models and validate univariate or multivariate configurations
+- **Data-Driven Recommendations**: Profile sampled time series and run shared autotune suggestions for one production-ready model config across many returned series
 - **Configuration Generation**: Generate complete `vmanomaly` YAML configurations
 - **Alert Rule Generation**: Generate [`vmalert`](https://docs.victoriametrics.com/victoriametrics/vmalert/) [alerting rules](https://docs.victoriametrics.com/victoriametrics/vmalert/#alerting-rules) based on [anomaly score metrics](https://docs.victoriametrics.com/anomaly-detection/faq/#what-is-anomaly-score) to simplify alerting setup
 - **Documentation Search**: Full-text search across embedded `vmanomaly` documentation with fuzzy matching
@@ -25,7 +26,9 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
 
 ## Requirements
 
-- [`vmanomaly`](https://docs.victoriametrics.com/anomaly-detection/) instance (version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+) with REST API access
+- [`vmanomaly`](https://docs.victoriametrics.com/anomaly-detection/) instance with REST API access:
+  - version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+ for the core MCP toolset
+  - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
 - Go 1.24 or higher (if building from source)
 
 ## Installation
@@ -97,6 +100,18 @@ For building binary from source code you can use the following approach:
   # after that you can use docker image mcp-vmanomaly for running or pushing
   ```
 
+  For local UI/Copilot testing from the vmanomaly repository, build with a local tag:
+
+  ```bash
+  docker build -t mcp-vmanomaly:local .
+  ```
+
+  Then run the vmanomaly repository helper with:
+
+  ```bash
+  MCP_VMANOMALY_IMAGE=mcp-vmanomaly:local bin/run-mcp-http.sh
+  ```
+
 ## Configuration
 
 MCP Server for vmanomaly is configured via environment variables:
@@ -106,6 +121,7 @@ MCP Server for vmanomaly is configured via environment variables:
 | `VMANOMALY_ENDPOINT`     | vmanomaly server endpoint URL (e.g., http://localhost:8490)                                             | Yes      | -                | -                      |
 | `VMANOMALY_BEARER_TOKEN` | Bearer token for authenticating with vmanomaly API                                                      | No       | -                | -                      |
 | `VMANOMALY_HEADERS`      | Custom HTTP headers for requests (comma-separated key=value pairs, e.g., X-Custom=value1,X-Auth=value2) | No       | -                | -                      |
+| `VMANOMALY_REQUEST_TIMEOUT` | HTTP timeout for calls from MCP to vmanomaly, e.g. `60s`                                             | No       | `30s`            | -                      |
 | `MCP_SERVER_MODE`        | Server operation mode. See [Modes](#modes) for details.                                                 | No       | `stdio`          | `stdio`, `http`, `sse` |
 | `MCP_LISTEN_ADDR`        | Address for HTTP server to listen on                                                                    | No       | `localhost:8080` | -                      |
 | `MCP_DISABLED_TOOLS`     | Comma-separated list of tools to disable                                                                | No       | -                | -                      |
@@ -370,7 +386,7 @@ MCP vmanomaly provides tools organized into categories:
 
 | Tool                              | Description                                             |
 |-----------------------------------|---------------------------------------------------------|
-| `vmanomaly_list_models`           | List all available anomaly detection model types        |
+| `vmanomaly_list_models`           | List models exposed to VMUI and other UI-oriented flows |
 | `vmanomaly_get_server_models`     | Get configured server models and their query attachments |
 | `vmanomaly_get_model_schema`      | Get JSON schema for a specific model type               |
 | `vmanomaly_validate_model_config` | Validate model configuration before using it            |
@@ -399,74 +415,62 @@ MCP vmanomaly provides tools organized into categories:
 |-----------------------------------|----------------------------------------------------------|
 | `vmanomaly_generate_alert_rule`   | Generate VMAlert rule YAML for anomaly score alerting    |
 
+#### Analysis & Autotune (4 tools)
+
+| Tool                                   | Description                                                                  |
+|----------------------------------------|------------------------------------------------------------------------------|
+| `vmanomaly_timeseries_characteristics` | Profile sampled query results for trends, seasonalities, spikiness, and gaps |
+| `vmanomaly_create_autotune_task`       | Start tuning one requested model class on sampled series                    |
+| `vmanomaly_get_autotune_task`          | Poll autotune progress and retrieve a completed recommendation              |
+| `vmanomaly_cancel_autotune_task`       | Request cooperative cancellation of an autotune task                        |
+
+`vmanomaly_create_autotune_task` accepts `optimization_n_trials`, `optimization_timeout`, and advanced
+`optimization_params` to bound Optuna work. The MCP tool uses interactive defaults of 32 trials and
+8 seconds when no optimization budget is provided, and a conservative anomaly fraction of 0.02 when
+`anomaly_percentage` is omitted; the vmanomaly API defaults are larger. Poll
+`vmanomaly_get_autotune_task` until `status` is `done`, then use the recommendation under
+`result_data`. Treat `error` and `canceled` as terminal statuses.
+
+The list/schema endpoints intentionally expose only models supported by VMUI. Outside VMUI,
+documented multivariate aliases such as `temporal_envelope_multivariate` can still be shared-autotuned
+and validated as complete model configurations. Do not recommend multivariate models in VMUI.
+
 ### Dialog example
 
-This is an example dialog showing how AI assistant can help with vmanomaly configuration and anomaly detection:
+This example shows data-driven model selection rather than choosing a model from the metric name:
 
-- > **You**: I want to set up anomaly detection for CPU usage. What models are available?
-- > **Assistant**: *I can help you set up anomaly detection for CPU usage. Let me check available models in vmanomaly.*
-  >
-  > *Your vmanomaly instance supports the following anomaly detection models:*
-  > - *`zscore` - Statistical model based on z-score (standard deviations from mean)*
-  > - *`prophet` - Facebook's Prophet model for time series with seasonality*
-  > - *`mad` - Median Absolute Deviation model*
-  > - *`holtwinters` - Holt-Winters seasonal method*
-  > - *`isolation_forest_univariate` - Isolation Forest for univariate time series*
-  > - *`rolling_quantile` - Rolling quantile-based detection*
-  > - *`auto` - Automatic model selection*
-  >
-  > *For CPU usage monitoring, I'd recommend starting with `zscore` model as it's simple, fast, and works well for metrics with stable patterns. Would you like me to generate a configuration?*
-
-- > **You**: Yes, please generate a configuration for monitoring CPU usage with zscore model
-- > **Assistant**: *I'll generate a complete vmanomaly configuration for CPU usage monitoring with the zscore model:*
+- > **You**: Detect sustained CPU spikes for
+  > `avg by (instance) (1 - rate(node_cpu_seconds_total{mode="idle"}[5m]))` at a `5m` step.
+- > **Assistant**: *I profiled the exact query first. The sampled series contain a trend and recurring
+  > hour-of-day/day-of-week structure, so `temporal_envelope` is the best online starting point. If
+  > the profile had no meaningful trend or seasonality, I would prefer `mad_online` for robust data,
+  > or `zscore_online` only for a stable light-tailed distribution.*
+- > **Assistant**: *I verified the model and schema, then started shared autotune with the same `5m`
+  > step, `anomaly_percentage=0.02`, and causal `exact=true` validation. After sequentially polling
+  > the task to completion, I validated the returned model configuration before presenting it.*
   >
   > ```yaml
-  > scheduler:
-  >   infer_every: "1m"
-  >   fit_every: "1h"
-  >   fit_window: "2d"
-  >
-  > reader:
-  >   datasource_url: "http://victoriametrics:8428"
-  >   queries:
-  >     cpu_usage: "avg(rate(node_cpu_seconds_total{mode!='idle'}[5m])) by (instance)"
-  >   step: "1m"
-  >
   > models:
-  >   zscore_cpu:
-  >     class: "zscore"
-  >     z_threshold: 2.5
-  >
-  > writer:
-  >   datasource_url: "http://victoriametrics:8428"
+  >   cpu_envelope:
+  >     class: temporal_envelope
+  >     queries: [cpu_non_idle]
+  >     schedulers: [cpu_5m]
+  >     seasonalities: [hod_smooth, dow_smooth]
+  >     detection_direction: above_expected
+  >     min_rel_dev_from_expected: [0, 15]
   > ```
   >
-  > *This configuration will:*
-  > - *Run inference every minute*
-  > - *Retrain the model every hour using the last 2 days of data*
-  > - *Use z-score model with threshold of 2.5 standard deviations*
-  > - *Monitor CPU usage across all instances*
-  >
-  > *Would you like me to validate this configuration or adjust any parameters?*
-
-- > **You**: Looks good! Can you create a detection task to test it?
-- > **Assistant**: *I'll create an anomaly detection task to test the configuration on your recent CPU data:*
-  >
-  > *Task created successfully! Here's the status:*
-  > - *Task ID: `task-abc-123`*
-  > - *Status: Running*
-  > - *Model: zscore with z_threshold=2.5*
-  > - *Time range: Last 24 hours*
-  > - *Progress: Processing data...*
-  >
-  > *The task is analyzing your CPU usage data. You can check the results in VictoriaMetrics by querying the anomaly score metrics. Would you like me to check the task status or show you how to query the results?*
+  > *The exact tuned parameters depend on the sampled data; the final model spec is always validated
+  > against the running vmanomaly instance.*
 
 During this dialog, the assistant used the following tools:
 
-- `vmanomaly_list_models` to get available model types
+- `vmanomaly_timeseries_characteristics` to measure the sampled data profile
+- `vmanomaly_list_models` and `vmanomaly_get_model_schema` to verify the UI-compatible model
+- `vmanomaly_create_autotune_task` and `vmanomaly_get_autotune_task` to tune shared parameters
+- `vmanomaly_validate_model_config` to validate the tuned model
 - `vmanomaly_validate_config` to validate the configuration
-- `vmanomaly_create_detection_task` to start anomaly detection
-- `vmanomaly_search_docs` to provide context about model parameters
+- `vmanomaly_create_detection_task` to backtest anomaly detection
 
 ## Monitoring
 
@@ -492,7 +496,6 @@ curl http://localhost:8080/metrics
 
 ## Roadmap
 
-- [ ] Add prompts for common vmanomaly workflows (model selection, troubleshooting)
 - [ ] Grafana dashboard for MCP server monitoring
 - [ ] Add API compatibility matrix to gracefully handle version differences between MCP client and vmanomaly server (API is evolving, features may be unavailable)
 

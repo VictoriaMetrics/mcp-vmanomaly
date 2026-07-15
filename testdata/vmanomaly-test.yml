@@ -1,0 +1,28 @@
+schedulers:
+  integration:
+    class: periodic
+    fit_every: 24h
+    fit_window: 6h
+    infer_every: 5m
+
+reader:
+  class: vm
+  datasource_url: http://victoriametrics:8428
+  sampling_period: 5m
+  queries:
+    integration_random:
+      expr: rand()
+
+writer:
+  class: noop
+
+models:
+  integration_mad:
+    class: mad_online
+    schedulers: [integration]
+    queries: [integration_random]
+
+monitoring:
+  pull:
+    addr: 0.0.0.0
+    port: 8080
