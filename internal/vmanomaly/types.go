@@ -112,23 +112,6 @@ type ServerQueryConfig struct {
 // ServerQueriesResponse represents configured reader queries keyed by alias.
 type ServerQueriesResponse map[string]string
 
-// ModelClassEnum represents available model types
-type ModelClassEnum string
-
-const (
-	ModelClassRollingQuantile     ModelClassEnum = "rolling_quantile"
-	ModelClassStd                 ModelClassEnum = "std"
-	ModelClassQuantileOnline      ModelClassEnum = "quantile_online"
-	ModelClassZScoreOnline        ModelClassEnum = "zscore_online"
-	ModelClassHoltWinters         ModelClassEnum = "holtwinters"
-	ModelClassMADOnline           ModelClassEnum = "mad_online"
-	ModelClassProphet             ModelClassEnum = "prophet"
-	ModelClassMAD                 ModelClassEnum = "mad"
-	ModelClassIsolationForestUniv ModelClassEnum = "isolation_forest_univariate"
-	ModelClassZScore              ModelClassEnum = "zscore"
-	ModelClassAuto                ModelClassEnum = "auto"
-)
-
 // ============================================================================
 // Query Types
 // ============================================================================
@@ -144,6 +127,62 @@ type QueryRequest struct {
 	TenantID        *string  `json:"tenant_id,omitempty"`      // Optional tenant ID
 	NoCache         *string  `json:"nocache,omitempty"`        // Cache bypass parameter
 	PassAuthHeaders bool     `json:"pass_auth_headers"`        // Forward Authorization header
+}
+
+// TimeseriesCharacteristicsRequest represents a sampled time-series profiling request
+type TimeseriesCharacteristicsRequest struct {
+	Query           string   `json:"query"`                       // PromQL/LogsQL query to profile
+	Start           *float64 `json:"start,omitempty"`             // Query start timestamp (Unix)
+	End             *float64 `json:"end,omitempty"`               // Query end timestamp (Unix)
+	Step            string   `json:"step,omitempty"`              // Query step/resolution
+	DatasourceType  string   `json:"datasource_type,omitempty"`   // Datasource type: vm or vlogs
+	DatasourceURL   *string  `json:"datasource_url,omitempty"`    // Datasource URL
+	TenantID        *string  `json:"tenant_id,omitempty"`         // Optional tenant ID
+	PassAuthHeaders bool     `json:"pass_auth_headers,omitempty"` // Forward Authorization header
+	Timezone        *string  `json:"timezone,omitempty"`          // IANA timezone for calendar profiling
+	ShortGapSteps   *int     `json:"short_gap_steps,omitempty"`   // Short gaps to interpolate during profiling
+	Verbose         bool     `json:"verbose,omitempty"`           // Include expanded aggregate diagnostics
+	Limit           *int     `json:"limit,omitempty"`             // Sampled series cap
+}
+
+// AutotuneTaskRequest represents a shared autotune task request.
+type AutotuneTaskRequest struct {
+	Query                   string         `json:"query"`                               // PromQL/LogsQL query to sample and tune
+	TunedClassName          string         `json:"tuned_class_name"`                    // Model class or alias to tune
+	AnomalyPercentage       float64        `json:"anomaly_percentage"`                  // Expected anomaly fraction
+	Start                   *float64       `json:"start,omitempty"`                     // Query start timestamp (Unix)
+	End                     *float64       `json:"end,omitempty"`                       // Query end timestamp (Unix)
+	Step                    string         `json:"step,omitempty"`                      // Query step/resolution
+	DatasourceType          string         `json:"datasource_type,omitempty"`           // Datasource type: vm or vlogs
+	DatasourceURL           *string        `json:"datasource_url,omitempty"`            // Datasource URL
+	TenantID                *string        `json:"tenant_id,omitempty"`                 // Optional tenant ID
+	PassAuthHeaders         bool           `json:"pass_auth_headers,omitempty"`         // Forward Authorization header
+	Timezone                *string        `json:"timezone,omitempty"`                  // IANA timezone for profile-guided hints
+	ShortGapSteps           *int           `json:"short_gap_steps,omitempty"`           // Short gaps to interpolate during profiling
+	Limit                   *int           `json:"limit,omitempty"`                     // Sampled series cap
+	UseProfileHints         *bool          `json:"use_profile_hints,omitempty"`         // Narrow search space using sampled profile
+	OptimizationParams      map[string]any `json:"optimization_params,omitempty"`       // Optuna constraints
+	OptimizedBusinessParams []string       `json:"optimized_business_params,omitempty"` // Business params to tune
+	FrozenParams            map[string]any `json:"frozen_params,omitempty"`             // Fixed top-level model params
+}
+
+// AutotuneTaskResponse represents the response after creating an autotune task.
+type AutotuneTaskResponse struct {
+	TaskID string `json:"task_id"`
+	Status string `json:"status"`
+}
+
+// AutotuneTaskStatus represents the lifecycle and optional result of an autotune task.
+type AutotuneTaskStatus struct {
+	TaskID     string         `json:"task_id"`
+	Status     string         `json:"status"`
+	Progress   int            `json:"progress"`
+	Message    string         `json:"message"`
+	StartedAt  string         `json:"started_at"`
+	UpdatedAt  string         `json:"updated_at"`
+	Metrics    map[string]any `json:"metrics"`
+	ResultData map[string]any `json:"result_data,omitempty"`
+	Error      *string        `json:"error,omitempty"`
 }
 
 // ============================================================================

@@ -75,15 +75,19 @@ test-integration: ## Run integration tests (requires vmanomaly server running)
 	$(GOTEST) -v -tags=integration -race ./...
 
 test-integration-docker: ## Run integration tests with Docker
+	@if [ -z "$(VMANOMALY_LICENSE_FILE)" ]; then \
+		echo "VMANOMALY_LICENSE_FILE must point to a vmanomaly license file"; \
+		exit 1; \
+	fi
 	@echo "Starting test environment..."
-	@docker-compose -f testdata/docker-compose.test.yml up -d
+	@docker compose -f testdata/docker-compose.test.yml up -d
 	@echo "Waiting for services to be healthy..."
 	@sleep 15
 	@echo "Running integration tests..."
 	@VMANOMALY_ENDPOINT=http://localhost:8490 $(GOTEST) -v -tags=integration ./... || \
-		(echo "Tests failed, cleaning up..." && docker-compose -f testdata/docker-compose.test.yml down && exit 1)
+		(echo "Tests failed, cleaning up..." && docker compose -f testdata/docker-compose.test.yml down && exit 1)
 	@echo "Stopping test environment..."
-	@docker-compose -f testdata/docker-compose.test.yml down
+	@docker compose -f testdata/docker-compose.test.yml down
 	@echo "Integration tests complete"
 
 test-all: test test-integration ## Run all tests (unit + integration)

@@ -19,6 +19,7 @@ type Config struct {
 	logFile           string
 	bearerToken       string
 	customHeaders     map[string]string
+	requestTimeout    time.Duration
 }
 
 func parseCustomHeaders(headersEnv string) map[string]string {
@@ -84,6 +85,19 @@ func InitConfig() (*Config, error) {
 
 	customHeadersMap := parseCustomHeaders(os.Getenv("VMANOMALY_HEADERS"))
 
+	requestTimeout := 30 * time.Second
+	requestTimeoutStr := os.Getenv("VMANOMALY_REQUEST_TIMEOUT")
+	if requestTimeoutStr != "" {
+		timeout, err := time.ParseDuration(requestTimeoutStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse VMANOMALY_REQUEST_TIMEOUT: %w", err)
+		}
+		if timeout <= 0 {
+			return nil, fmt.Errorf("VMANOMALY_REQUEST_TIMEOUT must be positive")
+		}
+		requestTimeout = timeout
+	}
+
 	result := &Config{
 		vmanomalyEndpoint: os.Getenv("VMANOMALY_ENDPOINT"),
 		serverMode:        strings.ToLower(os.Getenv("MCP_SERVER_MODE")),
@@ -95,6 +109,7 @@ func InitConfig() (*Config, error) {
 		logFile:           os.Getenv("MCP_LOG_FILE"),
 		bearerToken:       os.Getenv("VMANOMALY_BEARER_TOKEN"),
 		customHeaders:     customHeadersMap,
+		requestTimeout:    requestTimeout,
 	}
 
 	// Validate required config
@@ -180,4 +195,8 @@ func (c *Config) BearerToken() string {
 
 func (c *Config) CustomHeaders() map[string]string {
 	return c.customHeaders
+}
+
+func (c *Config) RequestTimeout() time.Duration {
+	return c.requestTimeout
 }

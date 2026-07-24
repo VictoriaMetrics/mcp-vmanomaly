@@ -20,7 +20,7 @@ func getTestClient(t *testing.T) *vmanomaly.Client {
 		endpoint = "http://localhost:8490"
 	}
 
-	client := vmanomaly.NewClient(endpoint)
+	client := vmanomaly.NewClient(endpoint, "", nil)
 
 	waitForServer(t, client)
 
@@ -71,8 +71,8 @@ func TestIntegration_GetBuildInfo(t *testing.T) {
 		t.Fatalf("GetBuildInfo() failed: %v", err)
 	}
 
-	if result["version"] == nil {
-		t.Error("expected version field in build info")
+	if result["vmanomaly"] == nil {
+		t.Error("expected vmanomaly field in build info")
 	}
 }
 
@@ -89,7 +89,7 @@ func TestIntegration_ListModels(t *testing.T) {
 		t.Error("expected at least one model")
 	}
 
-	expectedModels := []string{"zscore", "prophet", "mad"}
+	expectedModels := []string{"zscore_online", "mad_online", "temporal_envelope"}
 	for _, expected := range expectedModels {
 		found := false
 		for _, model := range result.Models {
@@ -108,16 +108,19 @@ func TestIntegration_GetModelSchema(t *testing.T) {
 	client := getTestClient(t)
 	ctx := context.Background()
 
-	schema, err := client.GetModelSchema(ctx, "zscore")
+	schema, err := client.GetModelSchema(ctx, "zscore_online")
 	if err != nil {
 		t.Fatalf("GetModelSchema() failed: %v", err)
 	}
 
-	if schema["type"] == nil {
-		t.Error("expected schema to have type field")
+	modelSchema, ok := schema["schema"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema = %T, want object", schema["schema"])
 	}
-
-	if schema["properties"] == nil {
+	if modelSchema["type"] != "object" {
+		t.Errorf("schema type = %v, want object", modelSchema["type"])
+	}
+	if modelSchema["properties"] == nil {
 		t.Error("expected schema to have properties field")
 	}
 }
@@ -195,6 +198,101 @@ func TestIntegration_Query(t *testing.T) {
 	}
 }
 
+func TestIntegration_TimeseriesCharacteristics(t *testing.T) {
+	client := getTestClient(t)
+	ctx := context.Background()
+	end := float64(time.Now().Unix())
+	start := end - float64((6 * time.Hour).Seconds())
+	limit := 5
+
+	result, err := client.TimeseriesCharacteristics(ctx, &vmanomaly.TimeseriesCharacteristicsRequest{
+		Query:          "rand()",
+		Start:          &start,
+		End:            &end,
+		Step:           "5m",
+		DatasourceType: "vm",
+		Verbose:        true,
+		Limit:          &limit,
+	})
+	if err != nil {
+		t.Fatalf("TimeseriesCharacteristics() failed: %v", err)
+	}
+	if result["status"] != "success" {
+		t.Fatalf("status = %v, want success", result["status"])
+	}
+	data, ok := result["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data = %T, want object", result["data"])
+	}
+	if data["resultType"] != "characteristics" {
+		t.Errorf("resultType = %v, want characteristics", data["resultType"])
+	}
+	if _, ok := data["batch"].(map[string]any); !ok {
+		t.Errorf("batch = %T, want object", data["batch"])
+	}
+	stats, ok := result["stats"].(map[string]any)
+	if !ok {
+		t.Fatalf("stats = %T, want object", result["stats"])
+	}
+	if stats["seriesCharacteristicsIncluded"] != "false" {
+		t.Errorf("seriesCharacteristicsIncluded = %v, want false", stats["seriesCharacteristicsIncluded"])
+	}
+}
+
+func TestIntegration_AutotuneTaskLifecycle(t *testing.T) {
+	client := getTestClient(t)
+	ctx := context.Background()
+	end := float64(time.Now().Unix())
+	start := end - float64((6 * time.Hour).Seconds())
+	limit := 1
+	useProfileHints := true
+
+	created, err := client.CreateAutotuneTask(ctx, &vmanomaly.AutotuneTaskRequest{
+		Query:             "rand()",
+		TunedClassName:    "mad_online",
+		AnomalyPercentage: 0.02,
+		Start:             &start,
+		End:               &end,
+		Step:              "5m",
+		DatasourceType:    "vm",
+		Limit:             &limit,
+		UseProfileHints:   &useProfileHints,
+		OptimizationParams: map[string]any{
+			"n_trials":        1,
+			"timeout":         2,
+			"n_splits":        1,
+			"train_val_ratio": 2.5,
+			"beta":            0,
+			"exact":           true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateAutotuneTask() failed: %v", err)
+	}
+	if created.TaskID == "" || created.Status != "running" {
+		t.Fatalf("created = %#v, want non-empty task_id and running status", created)
+	}
+
+	status, err := client.GetAutotuneTask(ctx, created.TaskID)
+	if err != nil {
+		t.Fatalf("GetAutotuneTask() failed: %v", err)
+	}
+	if status.TaskID != created.TaskID {
+		t.Errorf("task_id = %q, want %q", status.TaskID, created.TaskID)
+	}
+	if status.Status == "" {
+		t.Error("expected non-empty autotune task status")
+	}
+
+	canceled, err := client.CancelAutotuneTask(ctx, created.TaskID)
+	if err != nil {
+		t.Fatalf("CancelAutotuneTask() failed: %v", err)
+	}
+	if !canceled["ok"] {
+		t.Fatalf("cancellation response = %#v, want ok=true", canceled)
+	}
+}
+
 func TestIntegration_GetDetectionLimits(t *testing.T) {
 	client := getTestClient(t)
 	ctx := context.Background()
@@ -224,12 +322,15 @@ func TestIntegration_TaskLifecycle(t *testing.T) {
 	var taskID string
 
 	t.Run("create task", func(t *testing.T) {
+		datasourceURL := "http://victoriametrics:8428"
 		req := &vmanomaly.AnomalyDetectionTaskRequest{
-			Query:            "up",
+			Query:            "rand()",
 			Step:             "1m",
 			FitWindow:        "1h",
 			FitEvery:         "30m",
 			AnomalyThreshold: 1.5,
+			ModelSpec:        map[string]any{"class": "mad_online"},
+			DatasourceURL:    &datasourceURL,
 			DatasourceType:   "vm",
 			Exact:            false,
 			PassAuthHeaders:  false,
@@ -314,8 +415,8 @@ func TestIntegration_TaskLifecycle(t *testing.T) {
 			return
 		}
 
-		if !result["canceled"] {
-			t.Errorf("expected canceled=true, got %v", result["canceled"])
+		if !result["ok"] {
+			t.Errorf("expected ok=true, got %v", result["ok"])
 		}
 
 		t.Logf("Task canceled successfully: %s", taskID)

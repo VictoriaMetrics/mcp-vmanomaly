@@ -18,13 +18,13 @@ import (
 // GenerateConfigArgs defines arguments for generate_config tool
 type GenerateConfigArgs struct {
 	Query         string         `json:"query" jsonschema:"required,description=PromQL query to monitor for anomalies"`
-	Step          string         `json:"step" jsonschema:"required,description=Query step/resolution (e.g. '1m' '5m' '1h')"`
+	Step          string         `json:"step" jsonschema:"required,description=Query step/resolution (e.g. '1m' '5m' '1h'). Use the same step used for profiling/autotune when generating a comparable final config."`
 	DatasourceURL string         `json:"datasource_url" jsonschema:"required,format=uri,description=VictoriaMetrics datasource URL (e.g. 'http://victoriametrics:8428')"`
-	ModelSpec     map[string]any `json:"model_spec" jsonschema:"required,description=Model specification as JSON object (must include 'class' field)"`
+	ModelSpec     map[string]any `json:"model_spec" jsonschema:"required,description=Model specification as JSON object (must include 'class' field). For Prophet configs with step < 1h, include compression={window:'1h', agg_method:'mean', adjust_boundaries:true} unless sub-hour baseline patterns are required."`
 	TenantID      string         `json:"tenant_id,omitempty" jsonschema:"description=Optional tenant ID for multi-tenancy support"`
 	FitWindow     string         `json:"fit_window,omitempty" jsonschema:"description=Time window for model fitting (default: '1d')"`
-	FitEvery      string         `json:"fit_every,omitempty" jsonschema:"description=Model retraining frequency (default: '1d')"`
-	InferEvery    string         `json:"infer_every,omitempty" jsonschema:"description=Optional inference cadence for batch processing"`
+	FitEvery      string         `json:"fit_every,omitempty" jsonschema:"description=Model retraining frequency (default: '1d'). For production configs choose this from drift and resource needs; do not copy the long fit_every used by controlled UI/API exact backtests."`
+	InferEvery    string         `json:"infer_every,omitempty" jsonschema:"description=Optional inference cadence for batch processing. Keep equal to step unless the user asks for a different detection cadence."`
 }
 
 // ValidateConfigArgs defines arguments for validate_config tool

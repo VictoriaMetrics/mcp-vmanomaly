@@ -32,6 +32,8 @@ var (
 
 const serverName = "mcp-vmanomaly"
 
+const serverInstructions = `When a user wants to optimize business-facing anomaly controls, especially detection_direction away from "both", min_dev_from_expected, or min_rel_dev_from_expected, show the effective guardrails after the resulting anomaly detection task finishes. In VMUI Copilot, enable the "Business boundaries" overlay by applying show_business_boundaries=true through anomaly UI state. Treat show_business_boundaries as a frontend visualization setting, not a model parameter, and preserve the other anomaly UI settings.`
+
 const (
 	shutdownPeriod      = 15 * time.Second
 	shutdownHardPeriod  = 3 * time.Second
@@ -78,7 +80,12 @@ func main() {
 	}
 
 	ms := metrics.NewSet()
-	client := vmanomaly.NewClient(c.VmanomalyEndpoint(), c.BearerToken(), c.CustomHeaders())
+	client := vmanomaly.NewClientWithTimeout(
+		c.VmanomalyEndpoint(),
+		c.BearerToken(),
+		c.CustomHeaders(),
+		c.RequestTimeout(),
+	)
 
 	// Create tool filter that checks disabled tools from config
 	toolFilter := server.WithToolFilter(func(_ context.Context, toolsList []mcp.Tool) []mcp.Tool {
@@ -101,6 +108,7 @@ func main() {
 			server.WithToolCapabilities(true),
 			server.WithResourceCapabilities(!c.IsResourcesDisabled(), false),
 			server.WithPromptCapabilities(false),
+			server.WithInstructions(serverInstructions),
 			server.WithHooks(hooks.New(ms)),
 			toolFilter,
 		)
@@ -112,6 +120,7 @@ func main() {
 			server.WithToolCapabilities(true),
 			server.WithResourceCapabilities(!c.IsResourcesDisabled(), false),
 			server.WithPromptCapabilities(false),
+			server.WithInstructions(serverInstructions),
 			server.WithHooks(hooks.New(ms)),
 			toolFilter,
 		)

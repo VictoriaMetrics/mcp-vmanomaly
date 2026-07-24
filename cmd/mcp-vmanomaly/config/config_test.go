@@ -18,6 +18,7 @@ func TestInitConfig(t *testing.T) {
 	originalDisabledTools := os.Getenv("MCP_DISABLED_TOOLS")
 	originalHeartbeatInterval := os.Getenv("MCP_HEARTBEAT_INTERVAL")
 	originalDisableResources := os.Getenv("MCP_DISABLE_RESOURCES")
+	originalRequestTimeout := os.Getenv("VMANOMALY_REQUEST_TIMEOUT")
 
 	// Restore environment variables after test
 	defer func() {
@@ -31,6 +32,7 @@ func TestInitConfig(t *testing.T) {
 		os.Setenv("MCP_DISABLED_TOOLS", originalDisabledTools)
 		os.Setenv("MCP_HEARTBEAT_INTERVAL", originalHeartbeatInterval)
 		os.Setenv("MCP_DISABLE_RESOURCES", originalDisableResources)
+		os.Setenv("VMANOMALY_REQUEST_TIMEOUT", originalRequestTimeout)
 	}()
 
 	// Test case 1: Valid configuration
@@ -46,6 +48,7 @@ func TestInitConfig(t *testing.T) {
 		os.Setenv("MCP_DISABLED_TOOLS", "tool1,tool2")
 		os.Setenv("MCP_HEARTBEAT_INTERVAL", "60s")
 		os.Setenv("MCP_DISABLE_RESOURCES", "true")
+		os.Setenv("VMANOMALY_REQUEST_TIMEOUT", "45s")
 
 		// Initialize config
 		cfg, err := InitConfig()
@@ -85,6 +88,9 @@ func TestInitConfig(t *testing.T) {
 		}
 		if cfg.HeartbeatInterval() != 60*time.Second {
 			t.Errorf("Expected heartbeat interval 60s, got: %v", cfg.HeartbeatInterval())
+		}
+		if cfg.RequestTimeout() != 45*time.Second {
+			t.Errorf("Expected request timeout 45s, got: %v", cfg.RequestTimeout())
 		}
 		if !cfg.IsResourcesDisabled() {
 			t.Error("Expected resources to be disabled")
@@ -148,6 +154,7 @@ func TestInitConfig(t *testing.T) {
 		os.Setenv("MCP_DISABLED_TOOLS", "")
 		os.Setenv("MCP_HEARTBEAT_INTERVAL", "")
 		os.Setenv("MCP_DISABLE_RESOURCES", "")
+		os.Setenv("VMANOMALY_REQUEST_TIMEOUT", "")
 
 		// Initialize config
 		cfg, err := InitConfig()
@@ -170,9 +177,24 @@ func TestInitConfig(t *testing.T) {
 		if cfg.HeartbeatInterval() != 30*time.Second {
 			t.Errorf("Expected default heartbeat interval 30s, got: %v", cfg.HeartbeatInterval())
 		}
+		if cfg.RequestTimeout() != 30*time.Second {
+			t.Errorf("Expected default request timeout 30s, got: %v", cfg.RequestTimeout())
+		}
 		if cfg.IsResourcesDisabled() {
 			t.Error("Expected resources to be enabled by default")
 		}
+	})
+
+	t.Run("Invalid request timeout", func(t *testing.T) {
+		os.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+		os.Setenv("VMANOMALY_REQUEST_TIMEOUT", "0s")
+
+		_, err := InitConfig()
+
+		if err == nil {
+			t.Fatal("Expected error for invalid request timeout, got nil")
+		}
+		os.Setenv("VMANOMALY_REQUEST_TIMEOUT", "")
 	})
 
 	// Test case 6: Valid heartbeat interval
