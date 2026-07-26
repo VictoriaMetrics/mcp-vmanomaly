@@ -1,0 +1,10 @@
+.git
+.github
+.bin
+bin
+coverage.out
+coverage.html
+tmp
+testdata
+vendor
+*.log

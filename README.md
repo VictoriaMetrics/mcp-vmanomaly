@@ -36,20 +36,32 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
 ### Go
 
 ```bash
-go install github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly@latest
+go install github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly@vX.Y.Z
 ```
+
+Replace `vX.Y.Z` with the exact release you have reviewed.
 
 ### Binaries
 
 Download the latest release from [Releases](https://github.com/VictoriaMetrics/mcp-vmanomaly/releases) page and put it to your PATH.
 
-Example for Linux x86_64 (other architectures and platforms are also available):
+Example for Linux x86_64 (other architectures and platforms are also available). Select an
+explicit release rather than a mutable `latest` URL, verify its checksum, and then verify its
+GitHub build-provenance attestation:
 
 ```bash
-latest=$(curl -s https://api.github.com/repos/VictoriaMetrics/mcp-vmanomaly/releases/latest | grep 'tag_name' | cut -d\" -f4)
-wget https://github.com/VictoriaMetrics/mcp-vmanomaly/releases/download/$latest/mcp-vmanomaly_Linux_x86_64.tar.gz
-tar axvf mcp-vmanomaly_Linux_x86_64.tar.gz
+version=vX.Y.Z
+archive=mcp-vmanomaly_Linux_x86_64.tar.gz
+curl -fLO "https://github.com/VictoriaMetrics/mcp-vmanomaly/releases/download/${version}/${archive}"
+curl -fLO "https://github.com/VictoriaMetrics/mcp-vmanomaly/releases/download/${version}/checksums.txt"
+grep "  ${archive}$" checksums.txt | sha256sum --check -
+gh attestation verify "${archive}" --repo VictoriaMetrics/mcp-vmanomaly
+tar axvf "${archive}"
+./mcp-vmanomaly --version
 ```
+
+Build-provenance attestations are available for releases produced by the hardened release
+workflow. Release tags are required to be GPG-signed before that workflow publishes artifacts.
 
 ### Docker
 
@@ -59,14 +71,16 @@ This is the easiest way to get started without needing to install Go or build fr
 
 ```bash
 docker run -d --name mcp-vmanomaly \
-  -e VMANOMALY_ENDPOINT=http://localhost:8490 \
+  --add-host=host.docker.internal:host-gateway \
+  -e VMANOMALY_ENDPOINT=http://host.docker.internal:8490 \
   -e MCP_SERVER_MODE=http \
   -e MCP_LISTEN_ADDR=:8080 \
-  -p 8080:8080 \
-  ghcr.io/victoriametrics/mcp-vmanomaly
+  -p 127.0.0.1:8080:8080 \
+  ghcr.io/victoriametrics/mcp-vmanomaly:vX.Y.Z
 ```
 
-You should replace environment variables with your own parameters.
+Replace `vX.Y.Z` and the environment variables with your own parameters. When both services
+run in Docker, prefer a private Docker network and use the vmanomaly service name as the endpoint.
 
 Note that the `MCP_SERVER_MODE=http` flag is used to enable Streamable HTTP mode.
 More details about server modes can be found in the [Configuration](#configuration) section.
@@ -119,12 +133,14 @@ MCP Server for vmanomaly is configured via environment variables:
 | Variable                 | Description                                                                                             | Required | Default          | Allowed values         |
 |--------------------------|---------------------------------------------------------------------------------------------------------|----------|------------------|------------------------|
 | `VMANOMALY_ENDPOINT`     | vmanomaly server endpoint URL (e.g., http://localhost:8490)                                             | Yes      | -                | -                      |
-| `VMANOMALY_BEARER_TOKEN` | Bearer token for authenticating with vmanomaly API                                                      | No       | -                | -                      |
+| `VMANOMALY_BEARER_TOKEN` | Bearer token for authenticating with vmanomaly API (mutually exclusive with the token file)           | No       | -                | -                      |
+| `VMANOMALY_BEARER_TOKEN_FILE` | Path to a bearer-token file, suitable for mounted container/orchestrator secrets                  | No       | -                | -                      |
 | `VMANOMALY_HEADERS`      | Custom HTTP headers for requests (comma-separated key=value pairs, e.g., X-Custom=value1,X-Auth=value2) | No       | -                | -                      |
 | `VMANOMALY_REQUEST_TIMEOUT` | HTTP timeout for calls from MCP to vmanomaly, e.g. `60s`                                             | No       | `30s`            | -                      |
 | `MCP_SERVER_MODE`        | Server operation mode. See [Modes](#modes) for details.                                                 | No       | `stdio`          | `stdio`, `http`, `sse` |
 | `MCP_LISTEN_ADDR`        | Address for HTTP server to listen on                                                                    | No       | `localhost:8080` | -                      |
-| `MCP_DISABLED_TOOLS`     | Comma-separated list of tools to disable                                                                | No       | -                | -                      |
+| `MCP_ENABLED_TOOLS`      | Positive comma-separated tool allowlist; empty enables all registered tools                            | No       | -                | -                      |
+| `MCP_DISABLED_TOOLS`     | Comma-separated tool denylist; takes precedence over the allowlist                                     | No       | -                | -                      |
 | `MCP_DISABLE_RESOURCES`  | Disable all resources (documentation search will continue to work)                                      | No       | `false`          | `false`, `true`        |
 | `MCP_HEARTBEAT_INTERVAL` | Heartbeat interval for streamable-http protocol (keeps connection alive through network infrastructure) | No       | `30s`            | -                      |
 | `MCP_LOG_LEVEL`          | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                      | No       | `info`           | -                      |
@@ -139,7 +155,7 @@ MCP Server supports the following modes of operation (transports):
 - `sse` - Server-Sent Events. Server will expose the `/sse` and `/message` endpoints for SSE connections.
 
 > [!NOTE]
-> The `sse` transport mode was officialy deprecated from MCP
+> The `sse` transport mode was officially deprecated from MCP
 > Specification [(version 2025-03-26)](https://modelcontextprotocol.io/specification/2025-03-26/changelog#major-changes)
 > and was replaced by Streamable HTTP transport (`http` mode).
 > In future releases its support can be deprecated, use Streamable HTTP transport if your client supports it.
@@ -159,8 +175,16 @@ export VMANOMALY_ENDPOINT="http://localhost:8490"
 export VMANOMALY_ENDPOINT="http://localhost:8490"
 export VMANOMALY_BEARER_TOKEN="your-token"
 
+# Or load the token from a mounted secret file
+export VMANOMALY_BEARER_TOKEN_FILE="/run/secrets/vmanomaly-token"
+
 # With custom headers (e.g., behind a reverse proxy)
 export VMANOMALY_HEADERS="X-Custom-Header=value1,X-Another=value2"
+
+# Expose only the tools required by this deployment. A denylist can further
+# narrow this set and always takes precedence.
+export MCP_ENABLED_TOOLS="vmanomaly_health_check,vmanomaly_search_docs"
+export MCP_DISABLED_TOOLS="vmanomaly_get_metrics"
 
 # Server mode
 export MCP_SERVER_MODE="http"
@@ -182,6 +206,37 @@ In HTTP and SSE modes the MCP server provides the following endpoints:
 | `/health/liveness`   | Liveness check endpoint to ensure the server is running                                          |
 | `/health/readiness`  | Readiness check endpoint to ensure the server is ready to accept requests                        |
 | `/sse` + `/message`  | Endpoints for messages in SSE mode (for MCP clients that support SSE)                            |
+
+## Security
+
+Treat an MCP client as an operator of every enabled tool. The server forwards that client's
+requests to `vmanomaly` with the configured bearer token and headers; it does not add an
+independent user identity or authorization boundary.
+
+- Prefer `stdio` for a local, single-user integration. It has no network listener and inherits
+  access control from the process that launches it.
+- HTTP and SSE transports do not provide built-in client authentication. Keep the default
+  loopback bind where possible. If remote access is required, place the server behind an
+  authenticated TLS reverse proxy such as `vmauth`, restrict the network path, and do not expose
+  `/mcp`, `/sse`, or `/message` directly to an untrusted network.
+- Keep `/metrics` on an internal monitoring network or protect it at the proxy; health endpoints
+  can be exposed only as required by the deployment platform.
+- Give the configured vmanomaly credential the least privilege and tenant scope available.
+  Prefer `VMANOMALY_BEARER_TOKEN_FILE` for mounted secrets; never put tokens in command-line
+  arguments, image layers, or committed client configuration.
+- Use `MCP_ENABLED_TOOLS` as a deployment allowlist. Both the allowlist and denylist are enforced
+  for discovery and direct invocation, so hidden tools cannot be called by name. An empty
+  allowlist retains backward compatibility by enabling every registered tool.
+- `MCP_DISABLE_RESOURCES=true` hides resource discovery and reads. The documentation-search tool
+  remains independent and can be separately disabled with the tool policy.
+- Logs and metrics intentionally omit tool arguments/results, raw errors, client metadata, and
+  resource URIs. Treat MCP responses and downstream vmanomaly logs as sensitive nevertheless.
+
+These controls reduce the MCP server's exposure. Authorization and ownership checks for
+tenant-scoped vmanomaly operations must still be enforced by `vmanomaly`; a proxy alone cannot
+safely infer ownership of task identifiers passed through otherwise valid requests.
+
+Report suspected vulnerabilities using the private process in [SECURITY.md](SECURITY.md).
 
 ## Setup in clients
 
@@ -470,7 +525,6 @@ During this dialog, the assistant used the following tools:
 - `vmanomaly_create_autotune_task` and `vmanomaly_get_autotune_task` to tune shared parameters
 - `vmanomaly_validate_model_config` to validate the tuned model
 - `vmanomaly_validate_config` to validate the configuration
-- `vmanomaly_create_detection_task` to backtest anomaly detection
 
 ## Monitoring
 
@@ -480,9 +534,9 @@ In [HTTP and SSE modes](#modes) the MCP Server provides metrics in Prometheus fo
 
 - `mcp_vmanomaly_initialize_total` - Client connections
 - `mcp_vmanomaly_call_tool_total{name,is_error}` - Tool calls with success/error tracking
-- `mcp_vmanomaly_read_resource_total{uri}` - Documentation resource reads
+- `mcp_vmanomaly_read_resource_total` - Documentation resource reads
 - `mcp_vmanomaly_list_*_total` - List operations (tools, resources, prompts)
-- `mcp_vmanomaly_error_total{method,error}` - Errors by method and type
+- `mcp_vmanomaly_error_total{method,error_class}` - Errors by bounded, non-sensitive class
 
 **Example**:
 
