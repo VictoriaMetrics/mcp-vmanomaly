@@ -31,6 +31,13 @@
           "isSecret": true
         },
         {
+          "name": "VMANOMALY_BEARER_TOKEN_FILE",
+          "description": "Path to a file containing a bearer token; mutually exclusive with VMANOMALY_BEARER_TOKEN",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
           "name": "VMANOMALY_HEADERS",
           "description": "Custom HTTP headers for vmanomaly requests (comma-separated key=value pairs, e.g., X-Custom-Header=value1,X-Another=value2)",
           "isRequired": false,
@@ -66,8 +73,15 @@
           "isSecret": false
         },
         {
+          "name": "MCP_ENABLED_TOOLS",
+          "description": "Comma-separated positive allowlist of tools; empty enables all registered tools",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
           "name": "MCP_DISABLED_TOOLS",
-          "description": "Comma-separated list of tools to disable",
+          "description": "Comma-separated denylist of tools; takes precedence over MCP_ENABLED_TOOLS",
           "isRequired": false,
           "format": "string",
           "isSecret": false
@@ -81,7 +95,7 @@
         },
         {
           "name": "MCP_DISABLE_RESOURCES",
-          "description": "Disable embedded documentation resources",
+          "description": "Disable embedded documentation resources; documentation search remains available",
           "isRequired": false,
           "format": "boolean",
           "isSecret": false

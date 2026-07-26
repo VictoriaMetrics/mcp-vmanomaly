@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -434,4 +435,54 @@ func TestInitConfig(t *testing.T) {
 			t.Error("Expected IsHTTP() to be true")
 		}
 	})
+}
+
+func TestEnabledAndDisabledToolPolicy(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("VMANOMALY_BEARER_TOKEN", "")
+	t.Setenv("VMANOMALY_BEARER_TOKEN_FILE", "")
+	t.Setenv("MCP_ENABLED_TOOLS", "tool-a, tool-b")
+	t.Setenv("MCP_DISABLED_TOOLS", "tool-b")
+
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if !cfg.IsToolEnabled("tool-a") {
+		t.Fatal("allowlisted tool-a must be enabled")
+	}
+	if cfg.IsToolEnabled("tool-b") {
+		t.Fatal("denylist must take precedence for tool-b")
+	}
+	if cfg.IsToolEnabled("tool-c") {
+		t.Fatal("tool-c must be denied by the positive allowlist")
+	}
+}
+
+func TestBearerTokenFile(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("VMANOMALY_BEARER_TOKEN", "")
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenPath, []byte("file-token\n"), 0600); err != nil {
+		t.Fatalf("failed to write token file: %v", err)
+	}
+	t.Setenv("VMANOMALY_BEARER_TOKEN_FILE", tokenPath)
+
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if cfg.BearerToken() != "file-token" {
+		t.Fatalf("unexpected bearer token %q", cfg.BearerToken())
+	}
+}
+
+func TestBearerTokenSourcesAreMutuallyExclusive(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("VMANOMALY_BEARER_TOKEN", "env-token")
+	t.Setenv("VMANOMALY_BEARER_TOKEN_FILE", filepath.Join(t.TempDir(), "token"))
+
+	if _, err := InitConfig(); err == nil {
+		t.Fatal("expected mutually exclusive bearer-token source error")
+	}
 }

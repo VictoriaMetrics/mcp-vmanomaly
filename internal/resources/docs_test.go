@@ -2,29 +2,92 @@ package resources
 
 import (
 	"context"
+	"io/fs"
+	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
+
+func TestEmbeddedDocumentationContainsMarkdownOnly(t *testing.T) {
+	err := filepath.WalkDir("docs", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".md" {
+			return nil
+		}
+		if _, err := DocsDir.ReadFile(filepath.ToSlash(path)); err != nil {
+			t.Errorf("Markdown file %q is missing from embedded documentation: %v", path, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("failed to inspect documentation: %v", err)
+	}
+
+	const imagePath = "docs/anomaly-detection/vmanomaly-ui-overview.webp"
+	if _, err := DocsDir.ReadFile(imagePath); err == nil {
+		t.Fatalf("documentation image %q must not be embedded", imagePath)
+	}
+}
+
+func resetDocumentationState(t *testing.T) {
+	t.Helper()
+	if searchIndex != nil {
+		if err := searchIndex.Close(); err != nil {
+			t.Fatalf("failed to close search index: %v", err)
+		}
+	}
+	docStoreOnce = sync.Once{}
+	docStoreErr = nil
+	resources = nil
+	contents = nil
+	documents = nil
+	searchIndexOnce = sync.Once{}
+	searchIndexErr = nil
+	searchIndex = nil
+}
+
+func TestDocumentationSearchIndexIsLazy(t *testing.T) {
+	resetDocumentationState(t)
+	mcpServer := server.NewMCPServer("test", "test")
+	if err := RegisterDocsResources(mcpServer); err != nil {
+		t.Fatalf("RegisterDocsResources failed: %v", err)
+	}
+	if searchIndex != nil {
+		t.Fatal("resource registration must not eagerly construct the search index")
+	}
+
+	results, err := SearchDocResources("prophet seasonality", 2)
+	if err != nil {
+		t.Fatalf("SearchDocResources failed: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected documentation search results")
+	}
+	if searchIndex == nil {
+		t.Fatal("documentation search must initialize the index")
+	}
+}
+
+func firstDocResourceURI(t *testing.T) string {
+	t.Helper()
+	if err := ensureDocStore(); err != nil {
+		t.Fatalf("failed to initialize documentation store: %v", err)
+	}
+	for uri := range contents {
+		return uri
+	}
+	t.Fatal("documentation store is empty")
+	return ""
+}
 
 // TestGetDocResourceContent tests the GetDocResourceContent function
 func TestGetDocResourceContent(t *testing.T) {
-	// Setup test data
-	testURI := "docs://test.md#0"
-	testContent := mcp.TextResourceContents{
-		URI:      testURI,
-		MIMEType: "text/markdown",
-		Text:     "# Test Document\n\nThis is a test document.",
-	}
-
-	// Save original contents and restore after test
-	origContents := contents
-	defer func() { contents = origContents }()
-
-	// Initialize contents map for testing
-	contents = map[string]mcp.ResourceContents{
-		testURI: testContent,
-	}
+	testURI := firstDocResourceURI(t)
 
 	// Test cases
 	testCases := []struct {
@@ -82,22 +145,7 @@ func TestGetDocResourceContent(t *testing.T) {
 
 // TestDocResourcesHandler tests the docResourcesHandler function
 func TestDocResourcesHandler(t *testing.T) {
-	// Setup test data
-	testURI := "docs://test.md#0"
-	testContent := mcp.TextResourceContents{
-		URI:      testURI,
-		MIMEType: "text/markdown",
-		Text:     "# Test Document\n\nThis is a test document.",
-	}
-
-	// Save original contents and restore after test
-	origContents := contents
-	defer func() { contents = origContents }()
-
-	// Initialize contents map for testing
-	contents = map[string]mcp.ResourceContents{
-		testURI: testContent,
-	}
+	testURI := firstDocResourceURI(t)
 
 	// Test cases
 	testCases := []struct {

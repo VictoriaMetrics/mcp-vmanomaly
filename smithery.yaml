@@ -12,6 +12,8 @@ startCommand:
         VMANOMALY_ENDPOINT: config.vmanomalyEndpoint,
         ...(config.vmanomalyBearerToken ? {VMANOMALY_BEARER_TOKEN: config.vmanomalyBearerToken} : {}),
         ...(config.vmanomalyHeaders ? {VMANOMALY_HEADERS: config.vmanomalyHeaders} : {}),
+        ...(config.enabledTools ? {MCP_ENABLED_TOOLS: config.enabledTools} : {}),
+        ...(config.disabledTools ? {MCP_DISABLED_TOOLS: config.disabledTools} : {}),
       }
     })
   configSchema:
@@ -31,6 +33,14 @@ startCommand:
         type: string
         default: ""
         description: Custom HTTP headers as comma-separated key=value pairs (optional)
+      enabledTools:
+        type: string
+        default: ""
+        description: Positive comma-separated tool allowlist; empty enables all tools
+      disabledTools:
+        type: string
+        default: ""
+        description: Comma-separated tool denylist; takes precedence over enabledTools
   exampleConfig:
     vmanomalyEndpoint: http://localhost:8490
     vmanomalyBearerToken: <YOUR_TOKEN_HERE>
