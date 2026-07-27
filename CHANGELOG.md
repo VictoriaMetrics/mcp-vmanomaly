@@ -12,8 +12,8 @@ published as the corresponding GitHub release notes.
 - Added file-based bearer-token loading for container and orchestrator secret mounts.
 - Removed tool arguments, results, raw errors, client metadata, and resource URIs from logs
   and metric labels where they could expose sensitive data or create unbounded cardinality.
-- Require cryptographically signed release tags and publish GitHub build-provenance
-  attestations for release archives.
+- Require GitHub-verified cryptographically signed release tags and publish GitHub
+  build-provenance attestations for release archives.
 
 ### Improvements
 

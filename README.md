@@ -61,7 +61,8 @@ tar axvf "${archive}"
 ```
 
 Build-provenance attestations are available for releases produced by the hardened release
-workflow. Release tags are required to be GPG-signed before that workflow publishes artifacts.
+workflow. Release tags must be annotated, cryptographically signed, and marked as verified by
+GitHub before that workflow publishes artifacts.
 
 ### Docker
 
@@ -209,9 +210,19 @@ In HTTP and SSE modes the MCP server provides the following endpoints:
 
 ## Security
 
-Treat an MCP client as an operator of every enabled tool. The server forwards that client's
-requests to `vmanomaly` with the configured bearer token and headers; it does not add an
-independent user identity or authorization boundary.
+Treat an MCP client as an operator of every enabled tool. The server forwards requests to
+`vmanomaly` with the process-wide bearer token and headers configured at startup; it does not add
+an independent user identity or authorization boundary.
+
+Use one of these routing models while preserving the invariant that each tool call reaches only
+the caller's trusted-domain vmanomaly installation:
+
+- A local per-user `stdio` process may use that user's token as its configured upstream token.
+- A remote MCP instance dedicated to one trusted domain may use a domain-scoped service token.
+- A shared remote MCP requires per-request forwarding of a verified user token so the gateway can
+  route each call to the correct trusted domain. The current process-wide token configuration does
+  not implement this pass-through mode; do not place multiple untrusted domains behind one static
+  MCP credential.
 
 - Prefer `stdio` for a local, single-user integration. It has no network listener and inherits
   access control from the process that launches it.
@@ -221,9 +232,12 @@ independent user identity or authorization boundary.
   `/mcp`, `/sse`, or `/message` directly to an untrusted network.
 - Keep `/metrics` on an internal monitoring network or protect it at the proxy; health endpoints
   can be exposed only as required by the deployment platform.
-- Give the configured vmanomaly credential the least privilege and tenant scope available.
+- Give the configured vmanomaly credential the least privilege and trusted-domain scope available.
   Prefer `VMANOMALY_BEARER_TOKEN_FILE` for mounted secrets; never put tokens in command-line
   arguments, image layers, or committed client configuration.
+- Treat `VMANOMALY_HEADERS` as trusted operator configuration. Tools that set
+  `pass_auth_headers=true` can ask vmanomaly to forward authorization to a datasource, so permit
+  that only for approved datasource origins and enforce an outbound network policy.
 - Use `MCP_ENABLED_TOOLS` as a deployment allowlist. Both the allowlist and denylist are enforced
   for discovery and direct invocation, so hidden tools cannot be called by name. An empty
   allowlist retains backward compatibility by enabling every registered tool.
@@ -232,9 +246,10 @@ independent user identity or authorization boundary.
 - Logs and metrics intentionally omit tool arguments/results, raw errors, client metadata, and
   resource URIs. Treat MCP responses and downstream vmanomaly logs as sensitive nevertheless.
 
-These controls reduce the MCP server's exposure. Authorization and ownership checks for
-tenant-scoped vmanomaly operations must still be enforced by `vmanomaly`; a proxy alone cannot
-safely infer ownership of task identifiers passed through otherwise valid requests.
+These controls reduce the MCP server's exposure but do not create tenant isolation. Treat one
+logical vmanomaly installation, including its replicas or shards, as one trusted domain. Route
+mutually untrusted domains to separate installations through `vmauth` or another authenticated
+gateway. Users inside one trusted domain share its task and resource boundary.
 
 Report suspected vulnerabilities using the private process in [SECURITY.md](SECURITY.md).
 
