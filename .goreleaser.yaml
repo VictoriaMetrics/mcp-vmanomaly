@@ -13,10 +13,15 @@ builds:
       - arm64
       - arm
       - "386"
+    ignore:
+      - goos: windows
+        goarch: arm
     main: ./cmd/mcp-vmanomaly/main.go
     binary: mcp-vmanomaly
+    flags:
+      - -trimpath
     ldflags:
-      - -X main.version={{.Version}} -X main.date={{ .CommitDate }}
+      - -s -w -buildid= -X main.version={{.Version}} -X main.date={{ .CommitDate }}
 
 archives:
   - formats: [tar.gz]

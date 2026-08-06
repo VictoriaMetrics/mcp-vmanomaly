@@ -3,7 +3,7 @@ package tools
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/resources"
 
@@ -52,6 +52,8 @@ func handleSearchDocs() func(ctx context.Context, req mcp.CallToolRequest, args 
 		limit := int(args.Limit)
 		if limit < 1 {
 			limit = 30 // default
+		} else if limit > 100 {
+			limit = 100
 		}
 
 		// Search documentation
@@ -62,10 +64,13 @@ func handleSearchDocs() func(ctx context.Context, req mcp.CallToolRequest, args 
 
 		// Build result with embedded resources
 		result := &mcp.CallToolResult{Content: []mcp.Content{}}
-		for _, resource := range rs {
+		for resultIndex, resource := range rs {
 			content, err := resources.GetDocResourceContent(resource.URI)
 			if err != nil {
-				log.Printf("error getting content for resource %s: %v", resource.URI, err)
+				// Resource URIs contain embedded documentation paths. Keep this
+				// internal-failure log bounded while retaining the result position
+				// needed to correlate repeated failures.
+				slog.Warn("Failed to load documentation search result", "result_index", resultIndex)
 				continue
 			}
 			result.Content = append(result.Content, mcp.EmbeddedResource{

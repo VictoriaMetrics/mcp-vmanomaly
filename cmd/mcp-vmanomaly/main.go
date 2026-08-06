@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -41,21 +43,52 @@ const (
 )
 
 func main() {
-	c, err := config.InitConfig()
-	if err != nil {
-		fmt.Printf("Error initializing config: %v\n", err)
-		return
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet(serverName, flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	showVersion := flags.Bool("version", false, "print version and exit")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if flags.NArg() != 0 {
+		_, _ = fmt.Fprintf(stderr, "unexpected arguments: %v\n", flags.Args())
+		return 2
+	}
+	if *showVersion {
+		_, _ = fmt.Fprintf(stdout, "%s v%s (date: %s)\n", serverName, version, date)
+		return 0
 	}
 
+	c, err := config.InitConfig()
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error initializing config: %v\n", err)
+		return 1
+	}
+
+	if err := serve(c, stderr); err != nil {
+		slog.Error("Server stopped with an error", "error_class", hooks.ErrorClass(err))
+		return 1
+	}
+	return 0
+}
+
+func serve(c *config.Config, stderr io.Writer) error {
 	var logOutput = os.Stderr
+	var logFile *os.File
 	if c.LogFile() != "" {
-		f, err := os.OpenFile(c.LogFile(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(c.LogFile(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to open log file, using stderr: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "Failed to open log file, using stderr: %v\n", err)
 		} else {
 			logOutput = f
-			defer f.Close()
+			logFile = f
 		}
+	}
+	if logFile != nil {
+		defer logFile.Close()
 	}
 
 	var logLevel slog.Level
@@ -80,67 +113,17 @@ func main() {
 	}
 
 	ms := metrics.NewSet()
-	client := vmanomaly.NewClientWithTimeout(
-		c.VmanomalyEndpoint(),
-		c.BearerToken(),
-		c.CustomHeaders(),
-		c.RequestTimeout(),
-	)
-
-	// Create tool filter that checks disabled tools from config
-	toolFilter := server.WithToolFilter(func(_ context.Context, toolsList []mcp.Tool) []mcp.Tool {
-		filtered := make([]mcp.Tool, 0, len(toolsList))
-		for _, tool := range toolsList {
-			if !c.IsToolDisabled(tool.Name) {
-				filtered = append(filtered, tool)
-			}
-		}
-		return filtered
-	})
-
-	var mcpServer *server.MCPServer
-	if logLevel <= slog.LevelDebug {
-		mcpServer = server.NewMCPServer(
-			serverName,
-			fmt.Sprintf("v%s (date: %s)", version, date),
-			server.WithRecovery(),
-			server.WithLogging(),
-			server.WithToolCapabilities(true),
-			server.WithResourceCapabilities(!c.IsResourcesDisabled(), false),
-			server.WithPromptCapabilities(false),
-			server.WithInstructions(serverInstructions),
-			server.WithHooks(hooks.New(ms)),
-			toolFilter,
-		)
-	} else {
-		mcpServer = server.NewMCPServer(
-			serverName,
-			fmt.Sprintf("v%s (date: %s)", version, date),
-			server.WithRecovery(),
-			server.WithToolCapabilities(true),
-			server.WithResourceCapabilities(!c.IsResourcesDisabled(), false),
-			server.WithPromptCapabilities(false),
-			server.WithInstructions(serverInstructions),
-			server.WithHooks(hooks.New(ms)),
-			toolFilter,
-		)
+	mcpServer, err := newMCPServer(c, ms, logLevel <= slog.LevelDebug)
+	if err != nil {
+		return fmt.Errorf("failed to initialize MCP server: %w", err)
 	}
-
-	tools.RegisterTools(mcpServer, client)
-
-	if !c.IsResourcesDisabled() {
-		resources.RegisterDocsResources(mcpServer)
-	}
-
-	prompts.RegisterPromptConfigRecommendation(mcpServer)
 
 	// Stdio mode - simple execution
 	if c.IsStdio() {
 		if err := server.ServeStdio(mcpServer); err != nil {
-			slog.Error("failed to start server in stdio mode", "error", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to serve stdio: %w", err)
 		}
-		return
+		return nil
 	}
 
 	// SSE/HTTP mode - full server with graceful shutdown
@@ -159,9 +142,9 @@ func main() {
 
 	// Health endpoints
 	mux.HandleFunc("/health/liveness", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK\n"))
 	})
 	mux.HandleFunc("/health/readiness", func(w http.ResponseWriter, _ *http.Request) {
@@ -169,9 +152,9 @@ func main() {
 			http.Error(w, "Not ready", http.StatusServiceUnavailable)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("Ready\n"))
 	})
 
@@ -188,11 +171,11 @@ func main() {
 		srv := server.NewStreamableHTTPServer(mcpServer, heartBeatOption)
 		mux.Handle("/mcp", srv)
 	default:
-		slog.Error("Unknown server mode", "mode", c.ServerMode())
-		os.Exit(1)
+		return fmt.Errorf("unknown server mode %q", c.ServerMode())
 	}
 
 	ongoingCtx, stopOngoingGracefully := context.WithCancel(context.Background())
+	defer stopOngoingGracefully()
 	hs := &http.Server{
 		Addr:    c.ListenAddr(),
 		Handler: mux,
@@ -203,20 +186,26 @@ func main() {
 
 	listener, err := net.Listen("tcp", c.ListenAddr())
 	if err != nil {
-		slog.Error("Failed to listen", "addr", c.ListenAddr(), "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to listen on %s: %w", c.ListenAddr(), err)
 	}
+	defer listener.Close()
 	slog.Info("Server is listening", "addr", c.ListenAddr())
 
+	serveErr := make(chan error, 1)
 	go func() {
 		if err := hs.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Failed to start server", "error", err)
-			os.Exit(1)
+			serveErr <- fmt.Errorf("HTTP server failed: %w", err)
 		}
 	}()
 
 	isReady.Store(true)
-	<-rootCtx.Done()
+	select {
+	case <-rootCtx.Done():
+	case err := <-serveErr:
+		isReady.Store(false)
+		stopOngoingGracefully()
+		return err
+	}
 	stop()
 	isReady.Store(false)
 	slog.Info("Received shutdown signal, shutting down")
@@ -235,4 +224,63 @@ func main() {
 	}
 
 	slog.Info("Server stopped")
+	return nil
+}
+
+var errToolUnavailable = errors.New("requested tool is not available")
+
+func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool) (*server.MCPServer, error) {
+	toolFilter := server.WithToolFilter(func(_ context.Context, toolsList []mcp.Tool) []mcp.Tool {
+		filtered := make([]mcp.Tool, 0, len(toolsList))
+		for _, tool := range toolsList {
+			if c.IsToolEnabled(tool.Name) {
+				filtered = append(filtered, tool)
+			}
+		}
+		return filtered
+	})
+	toolPolicy := server.WithToolHandlerMiddleware(func(next server.ToolHandlerFunc) server.ToolHandlerFunc {
+		return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			if !c.IsToolEnabled(request.Params.Name) {
+				return nil, errToolUnavailable
+			}
+			return next(ctx, request)
+		}
+	})
+
+	options := []server.ServerOption{
+		server.WithRecovery(),
+		server.WithToolCapabilities(true),
+		server.WithPromptCapabilities(false),
+		server.WithInstructions(serverInstructions),
+		server.WithHooks(hooks.New(ms)),
+		toolFilter,
+		toolPolicy,
+	}
+	if enableProtocolLogging {
+		options = append(options, server.WithLogging())
+	}
+	if !c.IsResourcesDisabled() {
+		options = append(options, server.WithResourceCapabilities(true, false))
+	}
+
+	mcpServer := server.NewMCPServer(
+		serverName,
+		fmt.Sprintf("v%s (date: %s)", version, date),
+		options...,
+	)
+	client := vmanomaly.NewClientWithTimeout(
+		c.VmanomalyEndpoint(),
+		c.BearerToken(),
+		c.CustomHeaders(),
+		c.RequestTimeout(),
+	)
+	tools.RegisterTools(mcpServer, client)
+	if !c.IsResourcesDisabled() {
+		if err := resources.RegisterDocsResources(mcpServer); err != nil {
+			return nil, err
+		}
+	}
+	prompts.RegisterPromptConfigRecommendation(mcpServer)
+	return mcpServer, nil
 }

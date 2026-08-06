@@ -12,6 +12,7 @@ type Config struct {
 	vmanomalyEndpoint string
 	serverMode        string
 	listenAddr        string
+	enabledTools      map[string]bool
 	disabledTools     map[string]bool
 	heartbeatInterval time.Duration
 	disableResources  bool
@@ -20,6 +21,17 @@ type Config struct {
 	bearerToken       string
 	customHeaders     map[string]string
 	requestTimeout    time.Duration
+}
+
+func parseToolSet(value string) map[string]bool {
+	toolSet := make(map[string]bool)
+	for _, tool := range strings.Split(value, ",") {
+		tool = strings.TrimSpace(tool)
+		if tool != "" {
+			toolSet[tool] = true
+		}
+	}
+	return toolSet
 }
 
 func parseCustomHeaders(headersEnv string) map[string]string {
@@ -46,17 +58,9 @@ func parseCustomHeaders(headersEnv string) map[string]string {
 }
 
 func InitConfig() (*Config, error) {
-	// Parse disabled tools
-	disabledTools := os.Getenv("MCP_DISABLED_TOOLS")
-	disabledToolsMap := make(map[string]bool)
-	if disabledTools != "" {
-		for _, tool := range strings.Split(disabledTools, ",") {
-			tool = strings.Trim(tool, " ,")
-			if tool != "" {
-				disabledToolsMap[tool] = true
-			}
-		}
-	}
+	// An empty allowlist means all tools are eligible. The denylist always wins.
+	enabledToolsMap := parseToolSet(os.Getenv("MCP_ENABLED_TOOLS"))
+	disabledToolsMap := parseToolSet(os.Getenv("MCP_DISABLED_TOOLS"))
 
 	// Parse heartbeat interval
 	heartbeatInterval := 30 * time.Second
@@ -84,6 +88,10 @@ func InitConfig() (*Config, error) {
 	}
 
 	customHeadersMap := parseCustomHeaders(os.Getenv("VMANOMALY_HEADERS"))
+	bearerToken, err := readBearerToken()
+	if err != nil {
+		return nil, err
+	}
 
 	requestTimeout := 30 * time.Second
 	requestTimeoutStr := os.Getenv("VMANOMALY_REQUEST_TIMEOUT")
@@ -102,12 +110,13 @@ func InitConfig() (*Config, error) {
 		vmanomalyEndpoint: os.Getenv("VMANOMALY_ENDPOINT"),
 		serverMode:        strings.ToLower(os.Getenv("MCP_SERVER_MODE")),
 		listenAddr:        os.Getenv("MCP_LISTEN_ADDR"),
+		enabledTools:      enabledToolsMap,
 		disabledTools:     disabledToolsMap,
 		heartbeatInterval: heartbeatInterval,
 		disableResources:  disableResources,
 		logLevel:          strings.ToLower(os.Getenv("MCP_LOG_LEVEL")),
 		logFile:           os.Getenv("MCP_LOG_FILE"),
-		bearerToken:       os.Getenv("VMANOMALY_BEARER_TOKEN"),
+		bearerToken:       bearerToken,
 		customHeaders:     customHeadersMap,
 		requestTimeout:    requestTimeout,
 	}
@@ -141,6 +150,27 @@ func InitConfig() (*Config, error) {
 	return result, nil
 }
 
+func readBearerToken() (string, error) {
+	token := strings.TrimSpace(os.Getenv("VMANOMALY_BEARER_TOKEN"))
+	tokenFile := strings.TrimSpace(os.Getenv("VMANOMALY_BEARER_TOKEN_FILE"))
+	if token != "" && tokenFile != "" {
+		return "", fmt.Errorf("VMANOMALY_BEARER_TOKEN and VMANOMALY_BEARER_TOKEN_FILE are mutually exclusive")
+	}
+	if tokenFile == "" {
+		return token, nil
+	}
+
+	data, err := os.ReadFile(tokenFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read VMANOMALY_BEARER_TOKEN_FILE: %w", err)
+	}
+	token = strings.TrimSpace(string(data))
+	if token == "" {
+		return "", fmt.Errorf("VMANOMALY_BEARER_TOKEN_FILE is empty")
+	}
+	return token, nil
+}
+
 func (c *Config) VmanomalyEndpoint() string {
 	return c.vmanomalyEndpoint
 }
@@ -166,11 +196,20 @@ func (c *Config) ListenAddr() string {
 }
 
 func (c *Config) IsToolDisabled(toolName string) bool {
-	if c.disabledTools == nil {
+	return !c.IsToolEnabled(toolName)
+}
+
+// IsToolEnabled applies the configured positive allowlist and denylist.
+// If MCP_ENABLED_TOOLS is empty, every registered tool is allowed unless denied.
+// MCP_DISABLED_TOOLS takes precedence when a tool is present in both lists.
+func (c *Config) IsToolEnabled(toolName string) bool {
+	if c.disabledTools[toolName] {
 		return false
 	}
-	disabled, ok := c.disabledTools[toolName]
-	return ok && disabled
+	if len(c.enabledTools) == 0 {
+		return true
+	}
+	return c.enabledTools[toolName]
 }
 
 func (c *Config) IsResourcesDisabled() bool {

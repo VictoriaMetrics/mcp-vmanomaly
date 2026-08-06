@@ -5,16 +5,22 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-//go:embed docs
+// Embed only files the resource loader can serve. Documentation images remain
+// in the repository but do not need to increase every binary and image by
+// several megabytes.
+//
+//go:embed docs/*.md docs/*/*.md docs/*/*/*.md docs/*/*/*/*.md
 var DocsDir embed.FS
 
 const (
@@ -23,49 +29,96 @@ const (
 )
 
 var (
-	searchIndex bleve.Index
-	resources   map[string]mcp.Resource
-	contents    map[string]mcp.ResourceContents
+	docStoreOnce sync.Once
+	docStoreErr  error
+	resources    map[string]mcp.Resource
+	contents     map[string]mcp.ResourceContents
+	documents    map[string]DocFileInfo
+
+	searchIndexOnce sync.Once
+	searchIndexErr  error
+	searchIndex     bleve.Index
 )
 
-// RegisterDocsResources initializes and registers all documentation resources
-func RegisterDocsResources(s *server.MCPServer) {
-	var err error
-	mapping := bleve.NewIndexMapping()
-	if searchIndex, err = bleve.NewMemOnly(mapping); err != nil {
-		log.Fatal(fmt.Errorf("error creating index: %w", err))
+func ensureDocStore() error {
+	docStoreOnce.Do(func() {
+		docFiles, err := ListDocFiles()
+		if err != nil {
+			docStoreErr = fmt.Errorf("error listing docs files: %w", err)
+			return
+		}
+
+		resources = make(map[string]mcp.Resource, len(docFiles))
+		contents = make(map[string]mcp.ResourceContents, len(docFiles))
+		documents = make(map[string]DocFileInfo, len(docFiles))
+		for _, docFile := range docFiles {
+			resourceURI := fmt.Sprintf("%s%s#%d", docsURIPrefix, docFile.Path, docFile.ChunkNum)
+			resources[resourceURI] = mcp.NewResource(
+				resourceURI,
+				docFile.Name,
+				mcp.WithMIMEType("text/markdown"),
+				mcp.WithResourceDescription(docFile.Content[:min(len(docFile.Content), maxMarkdownDescriptionSize)]),
+			)
+			contents[resourceURI] = mcp.TextResourceContents{
+				URI:      resourceURI,
+				MIMEType: "text/markdown",
+				Text:     docFile.Content,
+			}
+			documents[resourceURI] = docFile
+		}
+	})
+	return docStoreErr
+}
+
+func ensureSearchIndex() error {
+	if err := ensureDocStore(); err != nil {
+		return err
 	}
 
-	docFiles, err := ListDocFiles()
-	if err != nil {
-		log.Fatal(fmt.Errorf("error listing docs files: %w", err))
-	}
-	resources = make(map[string]mcp.Resource, len(docFiles))
-	contents = make(map[string]mcp.ResourceContents, len(docFiles))
-	for _, docFile := range docFiles {
-		resourceURI := fmt.Sprintf("%s%s#%d", docsURIPrefix, docFile.Path, docFile.ChunkNum)
-		resource := mcp.NewResource(
-			resourceURI,
-			docFile.Name,
-			mcp.WithMIMEType("text/markdown"),
-			mcp.WithResourceDescription(docFile.Content[:min(len(docFile.Content), maxMarkdownDescriptionSize)]),
-		)
-		s.AddResource(resource, docResourcesHandler)
-		resources[resourceURI] = resource
-		contents[resourceURI] = mcp.TextResourceContents{
-			URI:      resourceURI,
-			MIMEType: "text/markdown",
-			Text:     docFile.Content,
+	searchIndexOnce.Do(func() {
+		index, err := bleve.NewMemOnly(bleve.NewIndexMapping())
+		if err != nil {
+			searchIndexErr = fmt.Errorf("error creating index: %w", err)
+			return
 		}
-		if err = searchIndex.Index(resourceURI, docFile); err != nil {
-			log.Fatal(fmt.Errorf("error indexing file %s: %w", docFile.Path, err))
+
+		for resourceURI, docFile := range documents {
+			if err := index.Index(resourceURI, docFile); err != nil {
+				_ = index.Close()
+				searchIndexErr = fmt.Errorf("error indexing file %s: %w", docFile.Path, err)
+				return
+			}
 		}
+		searchIndex = index
+	})
+	return searchIndexErr
+}
+
+// RegisterDocsResources registers embedded documentation resources without
+// eagerly constructing the full-text search index. Search indexing is deferred
+// until vmanomaly_search_docs is called for the first time.
+func RegisterDocsResources(s *server.MCPServer) error {
+	if err := ensureDocStore(); err != nil {
+		return err
 	}
-	log.Printf("Registered %d documentation resources\n", len(docFiles))
+
+	resourceURIs := make([]string, 0, len(resources))
+	for resourceURI := range resources {
+		resourceURIs = append(resourceURIs, resourceURI)
+	}
+	sort.Strings(resourceURIs)
+	for _, resourceURI := range resourceURIs {
+		s.AddResource(resources[resourceURI], docResourcesHandler)
+	}
+	slog.Info("Registered documentation resources", "count", len(resourceURIs))
+	return nil
 }
 
 // SearchDocResources searches documentation using full-text search
 func SearchDocResources(query string, limit int) ([]mcp.Resource, error) {
+	if err := ensureSearchIndex(); err != nil {
+		return nil, err
+	}
 	searchQuery := bleve.NewMatchQuery(query)
 	searchQuery.Fuzziness = 1
 	searchRequest := bleve.NewSearchRequest(searchQuery)
@@ -102,6 +155,9 @@ func docResourcesHandler(_ context.Context, rrr mcp.ReadResourceRequest) ([]mcp.
 
 // GetDocResourceContent retrieves cached resource content by URI
 func GetDocResourceContent(uri string) (mcp.ResourceContents, error) {
+	if err := ensureDocStore(); err != nil {
+		return nil, err
+	}
 	content, ok := contents[uri]
 	if !ok {
 		return nil, fmt.Errorf("resource not found: %s", uri)
