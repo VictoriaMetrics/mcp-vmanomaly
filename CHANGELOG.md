@@ -3,7 +3,17 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
-## [Unreleased]
+## [v0.3.1] - 2026-08-06
+
+### Highlights
+
+- Hardened MCP tool discovery, execution, logging, secret loading, containers, and release
+  artifacts for safer production deployments.
+- Refreshed the embedded documentation for
+  [`vmanomaly` v1.30.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1301)
+  and aligned recommendations with its online-first model guidance.
+- Improved startup and failure behavior with version reporting, accurate exit codes, and
+  consistent resource capability advertisement.
 
 ### Security
 
@@ -12,7 +22,7 @@ published as the corresponding GitHub release notes.
 - Added file-based bearer-token loading for container and orchestrator secret mounts.
 - Removed tool arguments, results, raw errors, client metadata, and resource URIs from logs
   and metric labels where they could expose sensitive data or create unbounded cardinality.
-- Require GitHub-verified cryptographically signed release tags and publish GitHub
+- Required GitHub-verified cryptographically signed release tags and published GitHub
   build-provenance attestations for release archives.
 
 ### Improvements
@@ -21,13 +31,19 @@ published as the corresponding GitHub release notes.
   [`vmanomaly` v1.30.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1301).
 - Updated model-selection guidance to prefer online models and present Temporal Envelope as the
   migration target for supported offline models planned for future deprecation.
-- Defer documentation indexing until the first search and exclude non-served documentation
+- Deferred documentation indexing until the first search and excluded non-served documentation
   images from binaries.
-- Strip release and container binaries, remove local build paths, and run source-built
+- Stripped release and container binaries, removed local build paths, and ran source-built
   containers as an unprivileged user.
 - Added `--version` and non-zero exit codes for invalid configuration and runtime failures.
 - Fixed resource capability advertisement when resources are disabled; documentation search
   remains available independently.
+
+### Compatibility
+
+- Existing MCP tools remain compatible with `vmanomaly` v1.28.3 and newer.
+- Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
+- This release contains no breaking MCP tool changes.
 
 ## [v0.3.0] - 2026-07-24
 
@@ -56,4 +72,5 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.3.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.2.7...v0.3.0
