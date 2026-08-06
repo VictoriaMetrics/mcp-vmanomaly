@@ -45,7 +45,7 @@ var (
 			mcp.ArgumentDescription("Optional: Preferred model category (e.g., 'statistical', 'decomposition', 'ml-based', 'online'). Leave empty for automatic selection based on data characteristics."),
 		),
 		mcp.WithArgument("model_class",
-			mcp.ArgumentDescription("Optional: Specific model class to configure (e.g., 'temporal_envelope', 'prophet', 'zscore_online', 'mad_online', 'holtwinters', 'quantile_online', 'isolation_forest_univariate'). Leave empty for recommendations."),
+			mcp.ArgumentDescription("Optional: Specific model class to configure (e.g., 'temporal_envelope', 'zscore_online', 'mad_online', 'quantile_online', 'rolling_quantile'). Leave empty for recommendations."),
 		),
 		mcp.WithArgument("seasonality",
 			mcp.ArgumentDescription("Optional: Describe seasonality patterns in your data (e.g., 'hour-of-day/hod daily pattern', 'day-of-week/dow weekly pattern', 'monthly pattern', 'no seasonality')."),
@@ -86,7 +86,7 @@ const contextMessage = `**ANOMALY DETECTION FUNDAMENTALS**
 
 2. **Contextual Anomalies**: Data points anomalous in specific contexts but normal elsewhere
    - Examples: Low traffic at 3 PM (normal at 3 AM), high CPU on weekends
-   - Best detected by: Seasonal models (Prophet, Holt-Winters, seasonal quantiles)
+   - Best detected by: Temporal Envelope or Online Seasonal Quantile
    - Characteristics: Require understanding of patterns, trends, seasonality
 
 3. **Collective Anomalies**: Groups of points that collectively deviate from expected patterns
@@ -121,20 +121,19 @@ aliases through tools because the running build is authoritative:
 - month means month-of-year calendar seasonality.
 - If profile output and the user's visual/manual feedback disagree, treat user feedback as a
   candidate hypothesis and test/configure that explicit seasonality. For example, if the user
-  says the data has hour-of-day seasonality and not weekly seasonality, prefer Prophet with
-  explicit hod and weekly_seasonality: false.
+  says the data has hour-of-day seasonality and not weekly seasonality, prefer Temporal Envelope
+  with an HOD preset and omit unrelated weekly presets.
 
 **For Seasonal Patterns**:
 - **Complex operational profile** (strong trend, multiple calendar patterns, persistent level changes, or a mixture of these): → Temporal Envelope as the best default tradeoff
 - **Hour-of-day / HOD daily pattern**: → Temporal Envelope with an HOD preset; use quantile_online when trend is absent/slow and seasonal quantiles are specifically preferred
-- **Day-of-week / DOW weekly pattern**: → Temporal Envelope with a DOW preset; Holt-Winters remains suitable for one simple regular seasonality
+- **Day-of-week / DOW weekly pattern**: → Temporal Envelope with a DOW preset; use quantile_online when trend is absent/slow and seasonal quantiles are specifically preferred
 - **Month-of-year pattern**: → Temporal Envelope with a month preset and long enough fit history
 - **Simple profile with no strong trend or seasonality**: → Online MAD when the distribution is unknown, skewed, heavy-tailed, or contaminated by spikes; Online Z-score when sampled values are stable/light-tailed and magnitude-based deviation is the intended signal
-- **Prophet-specific offline decomposition or extensive custom seasonality**: → Prophet
 
 **For Trends**:
 - **Strong or changing trends with calendar structure**: → Temporal Envelope
-- **One simple regular trend/seasonality**: → Holt-Winters
+- **One simple regular trend/seasonality**: → Temporal Envelope or Online Seasonal Quantile
 - **Stationary data with no strong seasonality**: → Online MAD for robust distribution-free behavior; Online Z-score when the sampled distribution is stable/light-tailed and standard-deviation units are meaningful
 
 **For Data Characteristics**:
@@ -156,7 +155,7 @@ aliases through tools because the running build is authoritative:
 - If it reports no strong trend and no strong seasonality, prefer mad_online/mad when robustness is important or the distribution is uncertain. Prefer zscore_online/zscore only when the sample is stable/light-tailed and standard-deviation-based magnitude is useful. Do not add seasonal complexity to a simple profile.
 - In VMUI, never recommend a multivariate model: UI discovery and schema endpoints intentionally expose only UI-compatible models.
 - Outside VMUI, use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. It can be shared-autotuned and validated as a complete model configuration even though UI discovery omits it.
-- Keep Prophet for requirements specific to offline batch analysis, extensive custom seasonality, or Prophet decomposition outputs rather than as the general default for complex operational metrics.
+- Prophet, Holt-Winters, and Isolation Forest remain supported for existing configurations but are planned for future deprecation. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
 **AVAILABLE MODEL TYPES IN VMANOMALY**
 
@@ -165,7 +164,8 @@ aliases. Common UI-compatible aliases include auto, prophet, zscore_online/zscor
 mad_online/mad, temporal_envelope, std, rolling_quantile, quantile_online, holtwinters,
 and isolation_forest_univariate.
 Outside VMUI, documented multivariate aliases such as temporal_envelope_multivariate and
-isolation_forest_multivariate can be used in full configurations and shared autotune. They are
+isolation_forest_multivariate can be used in full configurations and shared autotune. Alias
+availability does not make a legacy model a recommendation for new configurations. They are
 intentionally absent from vmanomaly_list_models and vmanomaly_get_model_schema; use documentation
 and vmanomaly_validate_model_config for this workflow.
 Use holtwinters, not holt_winters. Use concrete isolation forest aliases, not generic
@@ -178,26 +178,24 @@ isolation_forest unless the models endpoint returns it.
 - rolling_quantile: Percentile-based, distribution-agnostic
 - quantile_online: Online seasonal quantile model for seasonal data with no/slow trend
 
-**Decomposition Models** (excellent for seasonal/trend patterns):
+**Temporal Models**:
 - temporal_envelope: Preferred online tradeoff for complex operational profiles with trends, multiple calendar patterns, persistent shifts, and forecasts
-- prophet: Offline/batch model for multiple seasonalities and Prophet-specific decomposition
-- holtwinters: Exponential smoothing, simple seasonal patterns
+- prophet, holtwinters: Legacy offline models supported for existing configurations; migrate new or updated deployments to Temporal Envelope
 
-**Machine Learning Models** (complex patterns, requires more data):
-- isolation_forest_univariate: Distribution-based anomaly detection
-- isolation_forest_multivariate: Cross-series feature-space outlier detection
+**Legacy Machine Learning Models**:
+- isolation_forest_univariate, isolation_forest_multivariate: Supported for existing configurations; migrate to the matching univariate or multivariate Temporal Envelope model
 
 **Adaptive Models**:
 - temporal_envelope: Continuously adapts trend, calendar profiles, persistent shifts, and uncertainty
 - Online variants (zscore_online, mad_online, quantile_online): Continuously update simpler distributional state
 - auto: Automatic model selection (use with caution, understand what it selects)
 
-**Prophet HOD guidance**:
+**Legacy Prophet maintenance guidance** (only when the user explicitly requests help with an existing Prophet configuration):
 - For hod / hour_of_day, configure tz_aware: true and tz_seasonalities with name: "hod".
 - If the user says there is no weekly pattern, set inner args.weekly_seasonality: false.
 - Good HOD starting args before autotune/validation are growth: flat, n_changepoints: 5,
   changepoint_prior_scale: 0.05, interval_width: 0.98, and seasonality_mode: additive.
-- For Prophet tuning with step < 1h, freeze/use compression so fitting is coarsened to hourly data while final inference can still use the UI step:
+- For legacy Prophet tuning with step < 1h, freeze/use compression so fitting is coarsened to hourly data while final inference can still use the UI step:
   compression: {"window": "1h", "agg_method": "mean", "adjust_boundaries": true}. Use a smaller compression window only when sub-hour baseline patterns are important.
 
 **Business/domain args from common model docs**:
@@ -286,7 +284,7 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
 
 **Online-first model policy**:
 - Prefer an effective online model whenever it represents the measured profile: temporal_envelope for complex profiles with trend, calendar seasonality, changepoints, or persistent shifts; mad_online/mad for simple robust profiles; zscore_online/zscore for simple stable/light-tailed profiles where magnitude in standard-deviation units is meaningful.
-- Use offline models such as Prophet only as a fallback when their distinct capabilities are required, the matching online model is unavailable, or validation/backtesting demonstrates that the online candidate is inadequate.
+- Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations. They remain supported for existing deployments but are planned for future deprecation; offer Temporal Envelope as the univariate or multivariate migration target.
 
 **Phase 1: Data-first discovery**
 1. **vmanomaly_get_server_queries / vmanomaly_get_server_models** - Use these first when the user refers to an existing scheduled query, model, or deployment
@@ -319,7 +317,7 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
 
 5. **vmanomaly_search_docs** (query: string, limit?: number)
    - Search vmanomaly documentation for specific guidance
-   - Examples: "prophet seasonality", "online models", "fit_window configuration"
+   - Examples: "temporal envelope seasonality", "online models", "fit_window configuration"
    - Returns: Relevant documentation chunks with context
    - Use when you need specific implementation details
 
@@ -328,7 +326,7 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
    - Run this after choosing a concrete model class from the sampled profile
    - Returns: bestParams, modelConfig, bestScore, sampled profile, trial stats, and sampling stats
    - Prefer sampled shared autotune for "one config for all returned series" production recommendations
-   - Before calling, tell the user exactly what will happen, e.g. "I'll run shared autotune for prophet on sampled data with optimization_timeout=8s and optimization_n_trials=32."
+   - Before calling, tell the user exactly what will happen, e.g. "I'll run shared autotune for temporal_envelope on sampled data with optimization_timeout=8s and optimization_n_trials=32."
    - For interactive Copilot runs, explicitly set optimization_timeout=8 and optimization_n_trials=32 unless the user asked for a different budget
    - If the user asks for more accuracy and can wait, increase optimization_timeout and optimization_n_trials explicitly, e.g. 20-60 seconds and 64-128 trials
    - If expected anomaly percentage is missing, either ask the user or state the default assumption before the call, usually 0.01-0.02 for rare operational anomalies
@@ -547,7 +545,7 @@ func promptConfigRecommendationHandler(_ context.Context, gpr mcp.GetPromptReque
 	userRequest += "\n**Requirements**:\n"
 	userRequest += "1. Resolve an exact query before profiling: use a query already supplied by the user or current UI/server state; if none exists, ask for it and stop\n"
 	userRequest += "2. If the user supplied the query while the UI query input is empty, use it for time-series characteristics and suggest placing it in the UI query input\n"
-	userRequest += "3. Prefer an effective online model; use offline models such as Prophet only when required or when the online candidate is unavailable or inadequate\n"
+	userRequest += "3. Prefer an effective online model. Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations; offer Temporal Envelope as the migration target for existing deployments\n"
 	userRequest += "4. Run shared autotune for the selected model class when historical data is available; set optimization_params.exact=true for online models that will use causal exact inference\n"
 	userRequest += "5. Provide complete model configuration with parameter explanations\n"
 	userRequest += "6. Validate the configuration before presenting it\n"

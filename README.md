@@ -505,6 +505,10 @@ The list/schema endpoints intentionally expose only models supported by VMUI. Ou
 documented multivariate aliases such as `temporal_envelope_multivariate` can still be shared-autotuned
 and validated as complete model configurations. Do not recommend multivariate models in VMUI.
 
+For new configurations, prefer online models. Prophet, Holt-Winters, and Isolation Forest remain
+supported for existing deployments but are planned for future deprecation; use Temporal Envelope as
+the corresponding univariate or multivariate migration target.
+
 ### Dialog example
 
 This example shows data-driven model selection rather than choosing a model from the metric name:

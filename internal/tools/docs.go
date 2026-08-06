@@ -17,7 +17,7 @@ import (
 
 // SearchDocsArgs defines arguments for search_docs tool
 type SearchDocsArgs struct {
-	Query string  `json:"query" jsonschema_description:"Search query for vmanomaly documentation. Supports keywords phrases or natural language questions. Example queries: 'prophet model parameters' 'how to configure seasonality' 'online vs batch models' 'installation requirements' 'troubleshooting errors'. Uses fuzzy matching to find relevant documentation chunks."`
+	Query string  `json:"query" jsonschema_description:"Search query for vmanomaly documentation. Supports keywords phrases or natural language questions. Example queries: 'temporal envelope parameters' 'how to configure seasonality' 'online models' 'installation requirements' 'troubleshooting errors'. Uses fuzzy matching to find relevant documentation chunks."`
 	Limit float64 `json:"limit,omitempty" jsonschema_description:"Maximum number of documentation resources to return. Range: 1-100. Default: 30. Higher limits provide more context but may include less relevant results."`
 }
 

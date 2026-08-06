@@ -17,6 +17,10 @@ published as the corresponding GitHub release notes.
 
 ### Improvements
 
+- Refreshed the embedded documentation for
+  [`vmanomaly` v1.30.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1301).
+- Updated model-selection guidance to prefer online models and present Temporal Envelope as the
+  migration target for supported offline models planned for future deprecation.
 - Defer documentation indexing until the first search and exclude non-served documentation
   images from binaries.
 - Strip release and container binaries, remove local build paths, and run source-built

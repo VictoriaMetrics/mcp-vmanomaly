@@ -25,6 +25,8 @@ Use the following playgrounds to develop and test input queries:
 
 ## VM reader
 
+<div class="collapse-group">
+
 {{% collapse name="Queries format migration (to v1.13.0+)" %}}
 
 > The backward-compatible `queries` format introduced in v1.13.0 allows [VmReader](#vm-reader) parameters such as `step` to be configured per query. This can reduce the amount of data read from VictoriaMetrics. See [per-query parameters](#per-query-parameters) for details.
@@ -61,6 +63,8 @@ reader:
 ```
 {{% /collapse %}}
 
+{{% collapse name="VM reader per-query parameters and example" %}}
+
 ### Per-query parameters
 
 There is change {{% available_from "v1.13.0" anomaly %}} of [`queries`](https://docs.victoriametrics.com/anomaly-detection/components/reader/#vm-reader) arg format. Now each query alias supports the next (sub)fields, which *override reader-level parameters*, if set:
@@ -83,7 +87,7 @@ There is change {{% available_from "v1.13.0" anomaly %}} of [`queries`](https://
 
 - `max_points_per_query`{{% available_from "v1.17.0" anomaly %}} (int): Optional arg, overrides how `search.maxPointsPerTimeseries` flag{{% available_from "v1.14.1" anomaly %}} impacts `vmanomaly` on splitting long `fit_window` [queries](https://docs.victoriametrics.com/anomaly-detection/components/reader/#vm-reader) into smaller sub-intervals. This helps users avoid hitting the `search.maxQueryDuration` limit for individual queries by distributing initial query across multiple subquery requests with minimal overhead. Set less than `search.maxPointsPerTimeseries` if hitting `maxQueryDuration` limits. If set on a query-level, it overrides the global `max_points_per_query` (reader-level).
 
-- `tz`{{% available_from "v1.18.0" anomaly %}} (string): this optional argument enables timezone specification per query, overriding the reader’s default `tz`. This setting helps to account for local timezone shifts, such as [DST](https://en.wikipedia.org/wiki/Daylight_saving_time), in models that are sensitive to seasonal variations (e.g., [`ProphetModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet) or [`OnlineQuantileModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-seasonal-quantile)).
+- `tz`{{% available_from "v1.18.0" anomaly %}} (string): this optional argument enables timezone specification per query, overriding the reader’s default `tz`. This setting helps to account for local timezone shifts, such as [DST](https://en.wikipedia.org/wiki/Daylight_saving_time), in models that are sensitive to seasonal variations (e.g., [`TemporalEnvelopeModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#temporal-envelope) or [`OnlineQuantileModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-seasonal-quantile)).
 
 - `tenant_id` {{% available_from "v1.19.0" anomaly %}} (string): this optional argument enables tenant-level separation for queries (e.g. `query1` to get the data from tenant "0:0", `query2` - from tenant "1:0"). It works as follows:
   - if *not set, inherits* reader-level `tenant_id`
@@ -124,6 +128,10 @@ reader:
       tenant_id: '2:0'  # overriding tenant_id to isolate data
       offset: '-15s'  # to override reader-wise `offset` and query data 15 seconds earlier to account for data collection delays
 ```
+
+{{% /collapse %}}
+
+{{% collapse name="VM reader config parameters and example" %}}
 
 ### Config parameters
 
@@ -433,7 +441,7 @@ Optional arg{{% available_from "v1.17.0" anomaly %}} overrides how `search.maxPo
 `UTC`
             </td>
             <td>
-Optional argument {{% available_from "v1.18.0" anomaly %}} specifies the [IANA](https://nodatime.org/TimeZones) timezone to account for local shifts, like [DST](https://en.wikipedia.org/wiki/Daylight_saving_time), in models sensitive to seasonal patterns (e.g., [`TemporalEnvelopeModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#temporal-envelope), [`ProphetModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet), or [`OnlineQuantileModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-seasonal-quantile)). Defaults to `UTC` if not set and can be overridden on a [per-query basis](#per-query-parameters).
+Optional argument {{% available_from "v1.18.0" anomaly %}} specifies the [IANA](https://nodatime.org/TimeZones) timezone to account for local shifts, like [DST](https://en.wikipedia.org/wiki/Daylight_saving_time), in models sensitive to seasonal patterns (e.g., [`TemporalEnvelopeModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#temporal-envelope) or [`OnlineQuantileModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-seasonal-quantile)). Defaults to `UTC` if not set and can be overridden on a [per-query basis](#per-query-parameters).
             </td>
         </tr>
         <tr>
@@ -507,9 +515,15 @@ reader:
   series_processing_batch_size: 8
 ```
 
+{{% /collapse %}}
+
+</div>
+
 ### MetricsQL Playground
 
 To experiment with MetricsQL queries for `VmReader`, you can use the [VictoriaMetrics MetricsQL Playground](https://play.victoriametrics.com/), which provides an interactive environment to test and visualize your queries against sample data. You can also access embedded version of the playground below:
+
+<div class="collapse-group">
 
 {{% collapse name="VictoriaMetrics Playground" %}}
 
@@ -535,6 +549,8 @@ To experiment with MetricsQL queries for `VmReader`, you can use the [VictoriaMe
 </div>
 
 {{% /collapse %}}
+
+</div>
 
 ### mTLS protection
 
@@ -680,6 +696,8 @@ Similarly, [VictoriaTraces LogsQL Playground](https://play-vtraces.victoriametri
 
 You can also access **embedded version of the playground below** (VictoriaLogs datasource):
 
+<div class="collapse-group">
+
 {{% collapse name="VictoriaLogs LogsQL Playground" %}}
 
 <div class="position-relative mb-3">
@@ -705,6 +723,11 @@ You can also access **embedded version of the playground below** (VictoriaLogs d
 
 {{% /collapse %}}
 
+</div>
+
+<div class="collapse-group">
+
+{{% collapse name="VictoriaLogs reader config parameters" %}}
 
 ### Config parameters
 
@@ -802,7 +825,7 @@ Frequency of the points returned. Will be converted to `/select/stats_query_rang
 `America/New_York`
             </td>
             <td>
-(Optional) Specifies the [IANA](https://nodatime.org/TimeZones) timezone to account for local shifts, like [DST](https://en.wikipedia.org/wiki/Daylight_saving_time), in models sensitive to seasonal patterns (e.g., [`ProphetModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet) or [`OnlineQuantileModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-seasonal-quantile)). Defaults to `UTC` if not set and can be overridden on a [per-query basis](#per-query-parameters).
+(Optional) Specifies the [IANA](https://nodatime.org/TimeZones) timezone to account for local shifts, like [DST](https://en.wikipedia.org/wiki/Daylight_saving_time), in models sensitive to seasonal patterns (e.g., [`TemporalEnvelopeModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#temporal-envelope) or [`OnlineQuantileModel`](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-seasonal-quantile)). Defaults to `UTC` if not set and can be overridden on a [per-query basis](#per-query-parameters).
             </td>
         </tr>
         <tr>
@@ -989,6 +1012,10 @@ Optional hard cap {{% available_from "v1.30.0" anomaly %}} for how far last-seen
     </tbody>
 </table>
 
+{{% /collapse %}}
+
+{{% collapse name="VictoriaLogs reader per-query parameters and example" %}}
+
 ### Per-query parameters
 
 The names, types and the logic of the per-query parameters subset used in `VLogsReader` are exactly the same as those of [`VmReader`](#vm-reader), please see [per-query parameters](#per-query-parameters) section above for the details. The only difference is that `expr` parameter should contain a valid [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) expression with `stats` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe), as described in [query examples](#query-examples) section above.
@@ -1035,6 +1062,10 @@ reader:
 
 # other config sections, like models, schedulers, writer, ...
 ```
+
+{{% /collapse %}}
+
+</div>
 
 ### mTLS protection
 
