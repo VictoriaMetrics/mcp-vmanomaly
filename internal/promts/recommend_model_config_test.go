@@ -50,10 +50,22 @@ func TestRecommendationPromptUsesProfileComplexityDefaults(t *testing.T) {
 		"prefer temporal_envelope as the best balance",
 		"prefer mad_online/mad when robustness is important",
 		"Prefer zscore_online/zscore only when the sample is stable/light-tailed",
-		"Keep Prophet for requirements specific to offline batch analysis",
+		"Do not recommend them for new configurations",
+		"offer Temporal Envelope as the univariate or multivariate migration target",
 	} {
 		if !strings.Contains(contextMessage, expected) {
 			t.Errorf("context prompt does not contain %q", expected)
+		}
+	}
+}
+
+func TestRecommendationToolGuidanceDoesNotRecommendOfflineModelsForNewConfigs(t *testing.T) {
+	for _, expected := range []string{
+		"Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations",
+		"offer Temporal Envelope as the univariate or multivariate migration target",
+	} {
+		if !strings.Contains(toolGuidanceMessage, expected) {
+			t.Errorf("tool guidance does not contain %q", expected)
 		}
 	}
 }
