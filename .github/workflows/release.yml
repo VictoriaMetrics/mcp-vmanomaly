@@ -24,7 +24,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_OBJECT_SHA="$(git rev-parse "refs/tags/${GITHUB_REF_NAME}")"
+          TAG_REF_METADATA="$(gh api \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}")"
+          TAG_OBJECT_TYPE="$(jq -r '.object.type' <<<"${TAG_REF_METADATA}")"
+          TAG_OBJECT_SHA="$(jq -r '.object.sha' <<<"${TAG_REF_METADATA}")"
+          if [[ "${TAG_OBJECT_TYPE}" != "tag" ]]; then
+            echo "Release tag ${GITHUB_REF_NAME} must be an annotated tag, got: ${TAG_OBJECT_TYPE}" >&2
+            exit 1
+          fi
           TAG_METADATA="$(gh api \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "repos/${GITHUB_REPOSITORY}/git/tags/${TAG_OBJECT_SHA}")"
