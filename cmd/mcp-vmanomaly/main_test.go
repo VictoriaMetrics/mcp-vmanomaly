@@ -58,6 +58,20 @@ func TestRunVersionDoesNotRequireConfiguration(t *testing.T) {
 	}
 }
 
+func TestServerInstructionsRespectUIBusinessPolicyBoundary(t *testing.T) {
+	for _, expected := range []string{
+		"VMUI query state and suggest_query_config expose only the query expression and language",
+		"keep data_range, detection_direction, min_dev_from_expected, and min_rel_dev_from_expected in suggest_model_config changes",
+		"complete vmanomaly v1.30.2+ deployment configuration outside the VMUI suggestion flow",
+		"reader.queries.<alias>",
+		"model-level placement remains a compatibility fallback",
+	} {
+		if !strings.Contains(serverInstructions, expected) {
+			t.Errorf("server instructions do not contain %q", expected)
+		}
+	}
+}
+
 func TestRunInvalidConfigurationFails(t *testing.T) {
 	t.Setenv("VMANOMALY_ENDPOINT", "")
 	t.Setenv("VMANOMALY_BEARER_TOKEN", "")

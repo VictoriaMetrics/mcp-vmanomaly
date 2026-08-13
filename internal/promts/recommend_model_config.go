@@ -199,13 +199,17 @@ isolation_forest unless the models endpoint returns it.
   compression: {"window": "1h", "agg_method": "mean", "adjust_boundaries": true}. Use a smaller compression window only when sub-hour baseline patterns are important.
 
 **Business/domain args from common model docs**:
-- detection_direction: above_expected, below_expected, or both
-- data_range and clip_predictions for bounded metrics
-- min_dev_from_expected for absolute deadband around yhat
-- min_rel_dev_from_expected for relative deadband in percent of abs(yhat)
-- scale for asymmetric lower/upper interval scaling
+- In VMUI Copilot, keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in the model configuration and apply them through suggest_model_config. The UI query state and suggest_query_config expose only the query expression and language, while the backend task/config endpoints retain model-local compatibility handling. Do not emit reader.queries policy fields through a UI suggestion card.
+- In complete vmanomaly v1.30.2+ deployment configurations outside that UI flow, stable KPI policies belong to reader.queries.<alias>. An explicit query value is authoritative across every attached model.
+- Model-level placement of those four policies is deprecated but remains a model-local fallback for an attached query that omits the field. Do not copy a fallback from one model into a shared query unless the resulting policy should intentionally apply to every model attached to that query.
+- clip_predictions and scale remain model parameters; scale controls asymmetric lower/upper interval scaling.
 - Error/retry/5xx/saturation/queue metrics usually imply above_expected; availability/success drops often imply below_expected.
 - If the user says "at least 3% absolute or at least 15% relative", map that to deadband params instead of treating it as anomaly percentage.
+
+**Reader concurrency for complete production configs**:
+- For vmanomaly v1.30.2+, reader.workers bounds concurrent datasource requests and disk-streamed query chunks. Prefer workers: 0 for the automatic bound; use a positive explicit cap only when the user provides datasource concurrency limits or measured capacity.
+- Do not confuse reader.workers with settings.n_workers: reader.workers controls data acquisition, while settings.n_workers controls model-processing workers.
+- VMUI Copilot has no reader concurrency suggestion field. Mention reader.workers only when displaying or validating a complete deployment configuration, not in a UI suggestion card.
 
 **Exact exploratory task scheduler guidance**:
 - For UI/API exploratory tasks with exact=true, vmanomaly task execution uses controlled inference-only backtesting.
@@ -233,7 +237,8 @@ isolation_forest unless the models endpoint returns it.
 - When the selected model class changes, rebuild the model spec from scratch using only:
   1. class,
   2. result_data.data.modelConfig/bestParams returned by a done vmanomaly_get_autotune_task for that exact class,
-  3. explicit user-provided business params that exist in the selected model schema, such as detection_direction, data_range, clip_predictions, min_dev_from_expected, min_rel_dev_from_expected, or scale.
+  3. explicit user-provided model parameters that exist in the selected model schema, such as clip_predictions or scale.
+- Autotune may return detection_direction, data_range, min_dev_from_expected, or min_rel_dev_from_expected in its modelConfig for compatibility. Validate that returned model spec first; when producing a complete v1.30.2+ config, move those stable policies to reader.queries.<alias>, remove the duplicate model-level values, and validate the complete config.
 - Drop stale model-specific fields from previous candidates. For example, do not carry seasonal_features or Isolation Forest-specific params into MAD/Z-score configs, and do not carry MAD/Z-score threshold params into Prophet.
 - Before presenting or applying a config, compare every key against the selected model schema. Remove unsupported keys, then validate.
 
@@ -330,8 +335,8 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
    - For interactive Copilot runs, explicitly set optimization_timeout=8 and optimization_n_trials=32 unless the user asked for a different budget
    - If the user asks for more accuracy and can wait, increase optimization_timeout and optimization_n_trials explicitly, e.g. 20-60 seconds and 64-128 trials
    - If expected anomaly percentage is missing, either ask the user or state the default assumption before the call, usually 0.01-0.02 for rare operational anomalies
-   - Pass optimized_business_params or frozen_params when the metric semantics imply business constraints, e.g. error rates usually use detection_direction="above_expected"
-   - Freeze user-provided deadbands such as min_dev_from_expected and min_rel_dev_from_expected. A 15% relative threshold is min_rel_dev_from_expected=15.0, not 0.15.
+   - Pass frozen_params when the metric semantics imply stable business constraints during tuning, e.g. error rates usually use detection_direction="above_expected". Do not optimize these business policies.
+   - Freeze user-provided deadbands such as min_dev_from_expected and min_rel_dev_from_expected. A 15% relative threshold is min_rel_dev_from_expected=15.0, not 0.15. In a complete v1.30.2+ config, emit these policies under reader.queries.<alias> after validating the tuned model result.
    - For Prophet with step < 1h, pass frozen_params.compression = {"window":"1h","agg_method":"mean","adjust_boundaries":true} unless sub-hour baseline patterns are required
    - Never put class or class_name in frozen_params; tuned_class_name is the only model-identity input
    - Set optimization_params.exact=true for an online model when production uses causal exact inference; leave offline-model validation unchanged
@@ -353,6 +358,8 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
    - Validate complete vmanomaly YAML configuration
    - Use when user needs full deployment configuration
    - Validates reader, scheduler, model, writer sections together
+   - For v1.30.2+, place detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected under reader.queries.<alias>; keep clip_predictions and scale on the model
+   - For multi-query production configs, use reader.workers: 0 for automatic bounded concurrency unless an explicit measured cap is required
 
 **MANDATORY WORKFLOW**:
 
@@ -365,10 +372,11 @@ For EVERY recommendation you provide, follow this sequence:
 5. **Use vmanomaly_get_model_schema** - For UI-compatible models, understand parameters and use the schema as the allow-list. Outside VMUI, use documentation plus complete-config validation for multivariate models.
 6. **Use task-based shared autotune** - Call vmanomaly_create_autotune_task when historical data is available, then poll vmanomaly_get_autotune_task while status=running. Use result_data only when status=done; treat error/canceled as terminal. Use the user's expected anomaly percentage, or state a conservative default before calling.
 7. **Rebuild the final model spec from the selected class/schema** - do not mutate a previous candidate config; drop stale keys such as seasonal_features when they are not supported by the selected class
-8. **Align scheduler/query context** - preserve the same step across profile/autotune/final task, size fit_window to detected seasonality, and apply exact-online fit_every rules only for UI/API inference-only tasks
-9. **Use vmanomaly_validate_model_config** - ALWAYS validate before presenting
-10. **Explain recommendation** - Provide rationale, tradeoffs, expected behavior
-11. **Suggest alerting strategy** - Based on anomaly type and use case
+8. **Resolve business policies for the active flow** - keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in suggest_model_config for VMUI; only for a complete v1.30.2+ deployment config outside the UI suggestion flow, put them under reader.queries.<alias>, where an explicit query policy is authoritative
+9. **Align scheduler/query context** - preserve the same step across profile/autotune/final task, size fit_window to detected seasonality, and apply exact-online fit_every rules only for UI/API inference-only tasks
+10. **Use vmanomaly_validate_model_config** - ALWAYS validate before presenting a model; use vmanomaly_validate_config for a complete deployment after resolving query policies
+11. **Explain recommendation** - Provide rationale, tradeoffs, expected behavior
+12. **Suggest alerting strategy** - Based on anomaly type and use case
 
 **NEVER**:
 - Continue to profile, autotune, or recommend a model without an exact query
@@ -379,6 +387,7 @@ For EVERY recommendation you provide, follow this sequence:
 - Present a configuration without validating it first with vmanomaly_validate_model_config
 - Guess parameter names or types - always check the schema
 - Set, remove, or carry over provide_series in an applicable UI model suggestion
+- Put business-policy fields or reader.workers into a VMUI query/header suggestion that cannot represent them
 - Carry over model-specific parameters from a previous candidate when changing class, e.g. seasonal_features into MAD
 
 **Example Tool Usage Pattern**:
@@ -556,7 +565,8 @@ func promptConfigRecommendationHandler(_ context.Context, gpr mcp.GetPromptReque
 	userRequest += "11. Align scheduler/query context after profiling: same step for profile/autotune/final task, fit_window sized to detected seasonality, and infer_every aligned to the requested cadence\n"
 	userRequest += "12. For Prophet autotune with step < 1h, use frozen compression with window=1h, agg_method=mean, adjust_boundaries=true unless sub-hour baseline patterns matter\n"
 	userRequest += "13. For UI/API exact exploratory tasks with online models, use a fit_every longer than the inference range, e.g. 1000d; do not apply this to offline models or joint fit/infer backtesting\n"
-	userRequest += "14. Include alerting strategy suggestions based on the anomaly type"
+	userRequest += "14. In VMUI, keep business-policy changes in the model suggestion; move them to reader.queries.<alias> only when producing a complete deployment config outside the UI flow\n"
+	userRequest += "15. Include alerting strategy suggestions based on the anomaly type"
 
 	return mcp.NewGetPromptResult(
 		"",

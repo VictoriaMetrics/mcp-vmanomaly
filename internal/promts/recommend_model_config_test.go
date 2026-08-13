@@ -105,3 +105,32 @@ func TestRecommendationPromptRequiresAndReusesExactQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestRecommendationPromptUsesQueryLevelBusinessPolicies(t *testing.T) {
+	for _, expected := range []string{
+		"keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in the model configuration",
+		"suggest_query_config expose only the query expression and language",
+		"complete vmanomaly v1.30.2+ deployment configurations outside that UI flow",
+		"stable KPI policies belong to reader.queries.<alias>",
+		"An explicit query value is authoritative",
+		"move those stable policies to reader.queries.<alias>",
+		"Model-level placement of those four policies is deprecated",
+	} {
+		if !strings.Contains(contextMessage+toolGuidanceMessage, expected) {
+			t.Errorf("recommendation guidance does not contain %q", expected)
+		}
+	}
+}
+
+func TestRecommendationPromptUsesBoundedReaderConcurrency(t *testing.T) {
+	for _, expected := range []string{
+		"reader.workers bounds concurrent datasource requests",
+		"Prefer workers: 0 for the automatic bound",
+		"Do not confuse reader.workers with settings.n_workers",
+		"VMUI Copilot has no reader concurrency suggestion field",
+	} {
+		if !strings.Contains(contextMessage, expected) {
+			t.Errorf("context prompt does not contain %q", expected)
+		}
+	}
+}

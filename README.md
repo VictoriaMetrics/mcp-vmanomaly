@@ -511,7 +511,9 @@ the corresponding univariate or multivariate migration target.
 
 ### Dialog example
 
-This example shows data-driven model selection rather than choosing a model from the metric name:
+This example shows data-driven model selection rather than choosing a model from the metric name. The YAML is a
+complete deployment-config excerpt: VMUI suggestion cards continue to carry business-policy fields in the model
+configuration because the UI query editor currently exposes only the query expression and language.
 
 - > **You**: Detect sustained CPU spikes for
   > `avg by (instance) (1 - rate(node_cpu_seconds_total{mode="idle"}[5m]))` at a `5m` step.
@@ -524,14 +526,20 @@ This example shows data-driven model selection rather than choosing a model from
   > the task to completion, I validated the returned model configuration before presenting it.*
   >
   > ```yaml
+  > reader:
+  >   workers: 0
+  >   queries:
+  >     cpu_non_idle:
+  >       expr: avg by (instance) (1 - rate(node_cpu_seconds_total{mode="idle"}[5m]))
+  >       detection_direction: above_expected
+  >       min_rel_dev_from_expected: [0, 15]
+  >
   > models:
   >   cpu_envelope:
   >     class: temporal_envelope
   >     queries: [cpu_non_idle]
   >     schedulers: [cpu_5m]
   >     seasonalities: [hod_smooth, dow_smooth]
-  >     detection_direction: above_expected
-  >     min_rel_dev_from_expected: [0, 15]
   > ```
   >
   > *The exact tuned parameters depend on the sampled data; the final model spec is always validated

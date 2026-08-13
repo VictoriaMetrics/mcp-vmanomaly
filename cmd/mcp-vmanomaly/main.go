@@ -34,7 +34,7 @@ var (
 
 const serverName = "mcp-vmanomaly"
 
-const serverInstructions = `When a user wants to optimize business-facing anomaly controls, especially detection_direction away from "both", min_dev_from_expected, or min_rel_dev_from_expected, show the effective guardrails after the resulting anomaly detection task finishes. In VMUI Copilot, enable the "Business boundaries" overlay by applying show_business_boundaries=true through anomaly UI state. Treat show_business_boundaries as a frontend visualization setting, not a model parameter, and preserve the other anomaly UI settings.`
+const serverInstructions = `When a user wants to optimize business-facing anomaly controls, especially detection_direction away from "both", min_dev_from_expected, or min_rel_dev_from_expected, show the effective guardrails after the resulting anomaly detection task finishes. In VMUI Copilot, enable the "Business boundaries" overlay by applying show_business_boundaries=true through anomaly UI state. Treat show_business_boundaries as a frontend visualization setting, not a model parameter, and preserve the other anomaly UI settings. VMUI query state and suggest_query_config expose only the query expression and language, so keep data_range, detection_direction, min_dev_from_expected, and min_rel_dev_from_expected in suggest_model_config changes; do not try to apply reader.workers through a UI suggestion card. Only when producing a complete vmanomaly v1.30.2+ deployment configuration outside the VMUI suggestion flow, place these stable policies under reader.queries.<alias>; model-level placement remains a compatibility fallback.`
 
 const (
 	shutdownPeriod      = 15 * time.Second
