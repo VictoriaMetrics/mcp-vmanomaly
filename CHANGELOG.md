@@ -3,6 +3,17 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
+## [v0.3.2] - 2026-08-13
+
+### Improvements
+
+- Refreshed embedded documentation for [`vmanomaly` v1.30.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1302).
+- Updated configuration guidance for query-level business policies and bounded `reader.workers` concurrency.
+
+### Compatibility
+
+- Existing MCP tools remain compatible with `vmanomaly` v1.28.3 and newer; this release has no breaking MCP tool changes.
+
 ## [v0.3.1] - 2026-08-06
 
 ### Highlights
@@ -72,5 +83,6 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.3.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.2.7...v0.3.0
