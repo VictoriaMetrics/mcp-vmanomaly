@@ -134,3 +134,17 @@ func TestRecommendationPromptUsesBoundedReaderConcurrency(t *testing.T) {
 		}
 	}
 }
+
+func TestRecommendationPromptUsesBoundedWriterAndStableShardingGuidance(t *testing.T) {
+	for _, expected := range []string{
+		"remains many-to-one when it emits per-channel y, forecast, or bound diagnostics",
+		"writer.batch_max_series and writer.batch_max_bytes",
+		"writer.metric_prefix_cache_max_entries",
+		"VMANOMALY_SHARDING_STRATEGY=RENDEZVOUS",
+		"shard-count changes can still move assignments",
+	} {
+		if !strings.Contains(contextMessage, expected) {
+			t.Errorf("context prompt does not contain %q", expected)
+		}
+	}
+}

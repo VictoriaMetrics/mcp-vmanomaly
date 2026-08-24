@@ -155,6 +155,7 @@ aliases through tools because the running build is authoritative:
 - If it reports no strong trend and no strong seasonality, prefer mad_online/mad when robustness is important or the distribution is uncertain. Prefer zscore_online/zscore only when the sample is stable/light-tailed and standard-deviation-based magnitude is useful. Do not add seasonal complexity to a simple profile.
 - In VMUI, never recommend a multivariate model: UI discovery and schema endpoints intentionally expose only UI-compatible models.
 - Outside VMUI, use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. It can be shared-autotuned and validated as a complete model configuration even though UI discovery omits it.
+- A joint-score multivariate model remains many-to-one when it emits per-channel y, forecast, or bound diagnostics. Model topology describes service routing and identity, not auxiliary output width; account for those series in writer cardinality planning.
 - Prophet, Holt-Winters, and Isolation Forest remain supported for existing configurations but are planned for future deprecation. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
 **AVAILABLE MODEL TYPES IN VMANOMALY**
@@ -210,6 +211,11 @@ isolation_forest unless the models endpoint returns it.
 - For vmanomaly v1.30.2+, reader.workers bounds concurrent datasource requests and disk-streamed query chunks. Prefer workers: 0 for the automatic bound; use a positive explicit cap only when the user provides datasource concurrency limits or measured capacity.
 - Do not confuse reader.workers with settings.n_workers: reader.workers controls data acquisition, while settings.n_workers controls model-processing workers.
 - VMUI Copilot has no reader concurrency suggestion field. Mention reader.workers only when displaying or validating a complete deployment configuration, not in a UI suggestion card.
+
+**Writer and sharding controls for complete v1.30.3+ production configs**:
+- For high-cardinality output, size writer.batch_max_series and writer.batch_max_bytes from measured receiver and memory limits; do not reduce them as blanket defaults.
+- Bound writer.metric_prefix_cache_max_entries when dynamic metric names create measured cache pressure. A value of 0 disables cross-cycle prefix caching.
+- Round robin remains the default sharding strategy. Recommend VMANOMALY_SHARDING_STRATEGY=RENDEZVOUS only when stable assignment materially improves state reuse, apply it consistently to every shard, and warn that shard-count changes can still move assignments.
 
 **Exact exploratory task scheduler guidance**:
 - For UI/API exploratory tasks with exact=true, vmanomaly task execution uses controlled inference-only backtesting.

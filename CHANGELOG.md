@@ -3,6 +3,20 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
+## [v0.3.3] - TBD
+
+### Improvements
+
+- Added model recommendation guidance for bounded writer batches, metric-prefix caching, opt-in rendezvous sharding, and multivariate per-channel diagnostics.
+
+### Security
+
+- Updated the Go toolchain and release builder from 1.25.12 to 1.25.13 to include standard-library vulnerability fixes.
+
+### Compatibility
+
+- Existing MCP tools remain compatible with vmanomaly v1.28.3 and newer; this release has no breaking MCP tool changes.
+
 ## [v0.3.2] - 2026-08-13
 
 ### Improvements
@@ -83,6 +97,7 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.3.3]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.2.7...v0.3.0
