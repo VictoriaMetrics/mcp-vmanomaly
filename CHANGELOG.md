@@ -8,6 +8,7 @@ published as the corresponding GitHub release notes.
 ### Improvements
 
 - Added model recommendation guidance for bounded writer batches, metric-prefix caching, opt-in rendezvous sharding, and multivariate per-channel diagnostics.
+- Aligned the internal anomaly-detection task client with vmanomaly v1.30.3 by requiring `datasource_url`; exposed MCP tool schemas remain unchanged.
 
 ### Security
 

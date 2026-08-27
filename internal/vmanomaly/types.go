@@ -6,20 +6,20 @@ package vmanomaly
 
 // AnomalyDetectionTaskRequest represents a request to create an anomaly detection task
 type AnomalyDetectionTaskRequest struct {
-	Query            string         `json:"query"`                    // PromQL query to process
-	StartInferS      *float64       `json:"start_infer_s,omitempty"`  // Inference start timestamp (Unix)
-	EndInferS        *float64       `json:"end_infer_s,omitempty"`    // Inference end timestamp (Unix)
-	Step             string         `json:"step"`                     // Query step/resolution (default: "1s")
-	FitWindow        string         `json:"fit_window"`               // Time window for model fitting (default: "1d")
-	FitEvery         string         `json:"fit_every"`                // Model retraining frequency (default: "1d")
-	InferEvery       *string        `json:"infer_every,omitempty"`    // Optional inference cadence for exact-mode batches
-	Exact            bool           `json:"exact"`                    // Enable exact-mode inference for online models
-	AnomalyThreshold float64        `json:"anomaly_threshold"`        // Anomaly detection threshold (default: 1)
-	ModelSpec        map[string]any `json:"model_spec,omitempty"`     // Model specification (Pydantic discriminated union)
-	DatasourceURL    *string        `json:"datasource_url,omitempty"` // Datasource URL
-	DatasourceType   string         `json:"datasource_type"`          // Datasource type: vm or vmlogs (default: "vm")
-	TenantID         *string        `json:"tenant_id,omitempty"`      // Optional tenant ID
-	PassAuthHeaders  bool           `json:"pass_auth_headers"`        // Forward Authorization header to datasource
+	Query            string         `json:"query"`                   // PromQL query to process
+	StartInferS      *float64       `json:"start_infer_s,omitempty"` // Inference start timestamp (Unix)
+	EndInferS        *float64       `json:"end_infer_s,omitempty"`   // Inference end timestamp (Unix)
+	Step             string         `json:"step"`                    // Query step/resolution (default: "1s")
+	FitWindow        string         `json:"fit_window"`              // Time window for model fitting (default: "1d")
+	FitEvery         string         `json:"fit_every"`               // Model retraining frequency (default: "1d")
+	InferEvery       *string        `json:"infer_every,omitempty"`   // Optional inference cadence for exact-mode batches
+	Exact            bool           `json:"exact"`                   // Enable exact-mode inference for online models
+	AnomalyThreshold float64        `json:"anomaly_threshold"`       // Anomaly detection threshold (default: 1)
+	ModelSpec        map[string]any `json:"model_spec,omitempty"`    // Model specification (Pydantic discriminated union)
+	DatasourceURL    string         `json:"datasource_url"`          // Datasource URL (required by vmanomaly v1.30.3+)
+	DatasourceType   string         `json:"datasource_type"`         // Datasource type: vm or vmlogs (default: "vm")
+	TenantID         *string        `json:"tenant_id,omitempty"`     // Optional tenant ID
+	PassAuthHeaders  bool           `json:"pass_auth_headers"`       // Forward Authorization header to datasource
 }
 
 // AnomalyDetectionTaskResponse represents the response after creating a task
