@@ -3,10 +3,11 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
-## [v0.3.3] - TBD
+## [v0.3.3] - 2026-08-27
 
 ### Improvements
 
+- Refreshed embedded documentation for [`vmanomaly` v1.30.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1303).
 - Added model recommendation guidance for bounded writer batches, metric-prefix caching, opt-in rendezvous sharding, and multivariate per-channel diagnostics.
 - Aligned the internal anomaly-detection task client with vmanomaly v1.30.3 by requiring `datasource_url`; exposed MCP tool schemas remain unchanged.
 
