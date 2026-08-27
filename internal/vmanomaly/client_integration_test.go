@@ -330,7 +330,7 @@ func TestIntegration_TaskLifecycle(t *testing.T) {
 			FitEvery:         "30m",
 			AnomalyThreshold: 1.5,
 			ModelSpec:        map[string]any{"class": "mad_online"},
-			DatasourceURL:    &datasourceURL,
+			DatasourceURL:    datasourceURL,
 			DatasourceType:   "vm",
 			Exact:            false,
 			PassAuthHeaders:  false,
