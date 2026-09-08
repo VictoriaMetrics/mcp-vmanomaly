@@ -22,7 +22,7 @@ type GetModelSchemaArgs struct {
 
 // ValidateModelConfigArgs defines arguments for validate_model_config tool
 type ValidateModelConfigArgs struct {
-	ModelSpec map[string]any `json:"model_spec" jsonschema:"required,description=Model configuration object to validate. Must include 'class' plus model-specific parameters. Use vmanomaly_get_model_schema for UI-compatible univariate models. For documented multivariate models outside VMUI use documentation and this validation endpoint because UI discovery/schema intentionally hides them. Returns normalized config or detailed validation errors."`
+	ModelSpec map[string]any `json:"model_spec" jsonschema:"required,description=Model configuration object to validate. Must include 'class' plus model-specific parameters. Use vmanomaly_list_models and vmanomaly_get_model_schema to discover available models, including experimental multivariate models when exposed by the connected server. Returns normalized config or detailed validation errors."`
 }
 
 // ============================================================================
@@ -33,7 +33,7 @@ type ValidateModelConfigArgs struct {
 func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 	listModelsTool := mcp.NewTool(
 		"vmanomaly_list_models",
-		mcp.WithDescription("List model types exposed to VMUI and other UI-oriented configuration flows. Use this before selecting a model in UI, then call vmanomaly_get_model_schema. Multivariate models are intentionally omitted from this list; outside VMUI, documented multivariate aliases can still be autotuned and validated as complete model configurations."),
+		mcp.WithDescription("List model types exposed to VMUI and other UI-oriented configuration flows. Use this before selecting a model in UI, then call vmanomaly_get_model_schema. Experimental multivariate models may be included depending on the connected server version. Use its response as the source of truth."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
 			Title:           "Vmanomaly List Models",
 			ReadOnlyHint:    ptr(true),

@@ -72,9 +72,10 @@ func TestRecommendationToolGuidanceDoesNotRecommendOfflineModelsForNewConfigs(t 
 
 func TestRecommendationPromptExplainsMultivariateUIBoundary(t *testing.T) {
 	for _, expected := range []string{
-		"In VMUI, never recommend a multivariate model",
-		"documented multivariate aliases",
-		"intentionally absent from vmanomaly_list_models and vmanomaly_get_model_schema",
+		"check vmanomaly_list_models and vmanomaly_get_model_schema for multivariate availability",
+		"Preserve the experimental label",
+		"Copy expected_revision from the current query revision",
+		"preserve untouched and disabled rows",
 	} {
 		if !strings.Contains(contextMessage, expected) {
 			t.Errorf("context prompt does not contain %q", expected)
@@ -108,8 +109,8 @@ func TestRecommendationPromptRequiresAndReusesExactQuery(t *testing.T) {
 
 func TestRecommendationPromptUsesQueryLevelBusinessPolicies(t *testing.T) {
 	for _, expected := range []string{
-		"keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in the model configuration",
-		"suggest_query_config expose only the query expression and language",
+		"per-query detection_direction, data_range, min_dev_from_expected and min_rel_dev_from_expected",
+		"When the tool exposes queries and expected_revision",
 		"complete vmanomaly v1.30.2+ deployment configurations outside that UI flow",
 		"stable KPI policies belong to reader.queries.<alias>",
 		"An explicit query value is authoritative",

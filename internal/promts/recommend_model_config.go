@@ -54,7 +54,7 @@ var (
 			mcp.ArgumentDescription("Optional: Describe trends in your data (e.g., 'strong upward trend', 'no trend', 'fluctuating trend')."),
 		),
 		mcp.WithArgument("multivariate",
-			mcp.ArgumentDescription("Optional: Whether an external configuration should use multivariate models that analyze aligned metrics together. VMUI does not expose multivariate model configuration; never recommend it inside the UI flow."),
+			mcp.ArgumentDescription("Optional: Whether aligned metrics should be analyzed together. Check vmanomaly_list_models and the returned model schema for availability, including experimental multivariate models in VMUI."),
 		),
 	)
 )
@@ -153,8 +153,8 @@ aliases through tools because the running build is authoritative:
 - Treat the sampled vmanomaly_timeseries_characteristics response as the primary evidence.
 - If it reports strong trend, one or more meaningful calendar seasonalities, changepoints/persistent shifts, or a combination of these, prefer temporal_envelope as the best balance of coverage, continuous adaptation, robustness, configuration simplicity, and resource use.
 - If it reports no strong trend and no strong seasonality, prefer mad_online/mad when robustness is important or the distribution is uncertain. Prefer zscore_online/zscore only when the sample is stable/light-tailed and standard-deviation-based magnitude is useful. Do not add seasonal complexity to a simple profile.
-- In VMUI, never recommend a multivariate model: UI discovery and schema endpoints intentionally expose only UI-compatible models.
-- Outside VMUI, use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. It can be shared-autotuned and validated as a complete model configuration even though UI discovery omits it.
+- In VMUI, check vmanomaly_list_models and vmanomaly_get_model_schema for multivariate availability on the connected server. Preserve the experimental label and explain its limitations.
+- Use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. Inspect the actual autotune tool contract: a single expression returning multiple series does not replace named queries with separate policies.
 - A joint-score multivariate model remains many-to-one when it emits per-channel y, forecast, or bound diagnostics. Model topology describes service routing and identity, not auxiliary output width; account for those series in writer cardinality planning.
 - Prophet, Holt-Winters, and Isolation Forest remain supported for existing configurations but are planned for future deprecation. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
@@ -164,11 +164,10 @@ For VMUI, always call vmanomaly_list_models and use the returned aliases. Do not
 aliases. Common UI-compatible aliases include auto, prophet, zscore_online/zscore,
 mad_online/mad, temporal_envelope, std, rolling_quantile, quantile_online, holtwinters,
 and isolation_forest_univariate.
-Outside VMUI, documented multivariate aliases such as temporal_envelope_multivariate and
-isolation_forest_multivariate can be used in full configurations and shared autotune. Alias
-availability does not make a legacy model a recommendation for new configurations. They are
-intentionally absent from vmanomaly_list_models and vmanomaly_get_model_schema; use documentation
-and vmanomaly_validate_model_config for this workflow.
+Multivariate aliases such as temporal_envelope_multivariate and isolation_forest_multivariate
+may also be available: use the connected server discovery and schema as the source of truth.
+Alias availability does not make a legacy model a recommendation for new configurations.
+Use vmanomaly_validate_model_config to validate the complete model configuration.
 Use holtwinters, not holt_winters. Use concrete isolation forest aliases, not generic
 isolation_forest unless the models endpoint returns it.
 
@@ -200,7 +199,7 @@ isolation_forest unless the models endpoint returns it.
   compression: {"window": "1h", "agg_method": "mean", "adjust_boundaries": true}. Use a smaller compression window only when sub-hour baseline patterns are important.
 
 **Business/domain args from common model docs**:
-- In VMUI Copilot, keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in the model configuration and apply them through suggest_model_config. The UI query state and suggest_query_config expose only the query expression and language, while the backend task/config endpoints retain model-local compatibility handling. Do not emit reader.queries policy fields through a UI suggestion card.
+- In VMUI Copilot, inspect suggest_query_config and the current query state. When the tool exposes queries and expected_revision, apply named queries as a complete ordered array of alias, expr, enabled and per-query detection_direction, data_range, min_dev_from_expected and min_rel_dev_from_expected. Copy expected_revision from the current query revision; preserve untouched and disabled rows. Null or omitted policies inherit model defaults; explicit zero or unbounded values override them. Apply the query suggestion before dependent model suggestions. Do not claim a successful UI update until the suggestion is approved and applied. Model-level business policies remain available as shared defaults. Older servers without this contract cannot apply named queries through Copilot; do not silently replace their multi-query state with one expression.
 - In complete vmanomaly v1.30.2+ deployment configurations outside that UI flow, stable KPI policies belong to reader.queries.<alias>. An explicit query value is authoritative across every attached model.
 - Model-level placement of those four policies is deprecated but remains a model-local fallback for an attached query that omits the field. Do not copy a fallback from one model into a shared query unless the resulting policy should intentionally apply to every model attached to that query.
 - clip_predictions and scale remain model parameters; scale controls asymmetric lower/upper interval scaling.
@@ -313,9 +312,9 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
 
 3. **vmanomaly_list_models** - Check all available model types
    - No parameters required
-   - Returns: UI-compatible models exposed by this vmanomaly instance; multivariate models are intentionally omitted
-   - In VMUI, use this to verify availability and never recommend a multivariate model
-   - Outside VMUI, documented multivariate aliases can still be shared-autotuned and validated as complete model configs
+   - Returns: UI-compatible models exposed by this vmanomaly instance, including experimental multivariate models when available
+   - In VMUI, use this to verify availability before selecting any model
+   - For autotune, inspect its input schema; never silently discard named queries or per-query policies to fit a single-query tool
 
 **Phase 2: Deep Dive**
 4. **vmanomaly_get_model_schema** (model_class: string)
@@ -373,9 +372,9 @@ For EVERY recommendation you provide, follow this sequence:
 
 1. **Resolve the exact query** - Use the user's explicit query, current UI query, or a resolved scheduled query. If none exists, ask the user and stop. If the user supplied it while the UI input is empty, use it and propose it through suggest_query_config when available.
 2. **Use vmanomaly_timeseries_characteristics** - Base model selection on measured sampled data from that exact query
-3. **Use vmanomaly_list_models** - Verify UI-compatible options; outside VMUI, verify documented multivariate aliases through autotune/config validation
+3. **Use vmanomaly_list_models** - Verify available options on the connected server, including experimental multivariate models
 4. **Select a concrete model class** - Keep class selection in reasoning; backend autotune tunes the requested class
-5. **Use vmanomaly_get_model_schema** - For UI-compatible models, understand parameters and use the schema as the allow-list. Outside VMUI, use documentation plus complete-config validation for multivariate models.
+5. **Use vmanomaly_get_model_schema** - Understand parameters and use the returned schema as the allow-list; validate complete model configs before suggesting them.
 6. **Use task-based shared autotune** - Call vmanomaly_create_autotune_task when historical data is available, then poll vmanomaly_get_autotune_task while status=running. Use result_data only when status=done; treat error/canceled as terminal. Use the user's expected anomaly percentage, or state a conservative default before calling.
 7. **Rebuild the final model spec from the selected class/schema** - do not mutate a previous candidate config; drop stale keys such as seasonal_features when they are not supported by the selected class
 8. **Resolve business policies for the active flow** - keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in suggest_model_config for VMUI; only for a complete v1.30.2+ deployment config outside the UI suggestion flow, put them under reader.queries.<alias>, where an explicit query policy is authoritative
@@ -571,7 +570,7 @@ func promptConfigRecommendationHandler(_ context.Context, gpr mcp.GetPromptReque
 	userRequest += "11. Align scheduler/query context after profiling: same step for profile/autotune/final task, fit_window sized to detected seasonality, and infer_every aligned to the requested cadence\n"
 	userRequest += "12. For Prophet autotune with step < 1h, use frozen compression with window=1h, agg_method=mean, adjust_boundaries=true unless sub-hour baseline patterns matter\n"
 	userRequest += "13. For UI/API exact exploratory tasks with online models, use a fit_every longer than the inference range, e.g. 1000d; do not apply this to offline models or joint fit/infer backtesting\n"
-	userRequest += "14. In VMUI, keep business-policy changes in the model suggestion; move them to reader.queries.<alias> only when producing a complete deployment config outside the UI flow\n"
+	userRequest += "14. In VMUI, use suggest_query_config with queries and expected_revision when available to apply named expressions, aliases and per-query business policies; preserve untouched rows and inheritance. Keep shared model defaults in suggest_model_config\n"
 	userRequest += "15. Include alerting strategy suggestions based on the anomaly type"
 
 	return mcp.NewGetPromptResult(

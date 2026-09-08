@@ -30,7 +30,7 @@ type TimeseriesCharacteristicsArgs struct {
 
 type AutotuneTaskArgs struct {
 	Query                   string         `json:"query" jsonschema:"required,description=Exact PromQL or LogsQL query to sample and tune"`
-	TunedClassName          string         `json:"tuned_class_name" jsonschema:"required,description=Model class or alias to tune. For UI-compatible univariate models call vmanomaly_list_models first. Outside VMUI documented multivariate aliases can be tuned even though UI discovery intentionally hides them."`
+	TunedClassName          string         `json:"tuned_class_name" jsonschema:"required,description=Model class or alias to tune. Call vmanomaly_list_models first for available models. This tool takes one query expression, which may return multiple channels; it does not accept named queries with separate business policies."`
 	AnomalyPercentage       *float64       `json:"anomaly_percentage,omitempty" jsonschema:"description=Expected anomaly fraction in the range [0 0.5) for unsupervised tuning (conservative MCP default: 0.02)"`
 	Step                    string         `json:"step,omitempty" jsonschema:"description=Query step/resolution (default: '1s'; examples: '1m' '5m' '1h'). Use the same step from time-series characteristics and the final detect-anomalies task/config."`
 	Start                   *float64       `json:"start,omitempty" jsonschema:"description=Optional query start timestamp as Unix seconds"`
@@ -170,7 +170,7 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 		if strings.TrimSpace(args.TunedClassName) == "" {
-			return mcp.NewToolResultError("Invalid tuned_class_name: provide a supported model class or alias; use vmanomaly_list_models for UI-compatible models or documented multivariate aliases outside VMUI"), nil
+			return mcp.NewToolResultError("Invalid tuned_class_name: provide a supported model class or alias; use vmanomaly_list_models for available models on the connected server"), nil
 		}
 		anomalyPercentage := defaultFloat(args.AnomalyPercentage, defaultInteractiveAnomalyFraction)
 		if anomalyPercentage < 0 || anomalyPercentage >= 0.5 {
