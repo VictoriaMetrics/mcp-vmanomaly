@@ -149,3 +149,27 @@ func TestRecommendationPromptUsesBoundedWriterAndStableShardingGuidance(t *testi
 		}
 	}
 }
+
+func TestRecommendationPromptRetainsDecisionFramework(t *testing.T) {
+	for _, rule := range []string{
+		"point anomalies are isolated deviations",
+		"contextual anomalies depend on time",
+		"collective anomalies are unusual sequences",
+		"not synonymous with temporal collective anomalies",
+		"treat them as a hypothesis to test",
+		"Check missing values, gaps, sparsity, intermittency",
+		"do not assume a model supports missing data",
+		"Prefer univariate models for independent metrics",
+		"Balance latency, memory/CPU, cardinality, interpretability",
+		"Online models adapt during causal inference",
+		"Offline models rely on refits",
+		"Ask which misses and false alarms matter",
+		"Validate against known incidents and normal periods",
+		"Monitor alert quality and revisit assumptions",
+		"fit_every longer than the selected inference date range",
+	} {
+		if !strings.Contains(contextMessage, rule) {
+			t.Errorf("recommendation prompt lost decision rule %q", rule)
+		}
+	}
+}

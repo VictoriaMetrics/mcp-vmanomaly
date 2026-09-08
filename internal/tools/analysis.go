@@ -154,7 +154,7 @@ func handleTimeseriesCharacteristics(client *vmanomaly.Client) func(ctx context.
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to profile time series: %v", err)), nil
 		}
 
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -229,7 +229,7 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 			)), nil
 		}
 
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -248,7 +248,7 @@ func handleGetAutotuneTask(client *vmanomaly.Client) func(ctx context.Context, r
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to get shared autotune task: %v", err)), nil
 		}
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -262,7 +262,7 @@ func handleCancelAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to cancel shared autotune task: %v", err)), nil
 		}
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}

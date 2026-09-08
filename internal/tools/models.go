@@ -95,7 +95,7 @@ func handleListModels(client *vmanomaly.Client) server.ToolHandlerFunc {
 		}
 
 		// Format response
-		responseJSON, err := json.MarshalIndent(models, "", "  ")
+		responseJSON, err := json.Marshal(models)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -111,7 +111,7 @@ func handleGetServerModels(client *vmanomaly.Client) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to get server models: %v", err)), nil
 		}
 
-		responseJSON, err := json.MarshalIndent(models, "", "  ")
+		responseJSON, err := json.Marshal(models)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -129,7 +129,7 @@ func handleGetModelSchema(client *vmanomaly.Client) func(ctx context.Context, re
 		}
 
 		// Format response
-		responseJSON, err := json.MarshalIndent(schema, "", "  ")
+		responseJSON, err := json.Marshal(schema)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -147,7 +147,7 @@ func handleValidateModelConfig(client *vmanomaly.Client) func(ctx context.Contex
 		}
 
 		// Format response
-		responseJSON, err := json.MarshalIndent(validation, "", "  ")
+		responseJSON, err := json.Marshal(validation)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
