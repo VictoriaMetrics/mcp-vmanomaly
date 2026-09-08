@@ -145,25 +145,35 @@ type TimeseriesCharacteristicsRequest struct {
 	Limit           *int     `json:"limit,omitempty"`             // Sampled series cap
 }
 
+// NamedQuerySpec keeps query policies separate from shared model hyperparameters.
+type NamedQuerySpec struct {
+	Expr                  string    `json:"expr" jsonschema:"required,description=Exact query expression"`
+	DataRange             []any     `json:"data_range,omitempty" jsonschema:"description=Two bounds; use strings -Infinity and Infinity for unbounded values"`
+	DetectionDirection    string    `json:"detection_direction,omitempty" jsonschema:"enum=both,enum=above_expected,enum=below_expected"`
+	MinDevFromExpected    []float64 `json:"min_dev_from_expected,omitempty"`
+	MinRelDevFromExpected []float64 `json:"min_rel_dev_from_expected,omitempty"`
+}
+
 // AutotuneTaskRequest represents a shared autotune task request.
 type AutotuneTaskRequest struct {
-	Query                   string         `json:"query"`                               // PromQL/LogsQL query to sample and tune
-	TunedClassName          string         `json:"tuned_class_name"`                    // Model class or alias to tune
-	AnomalyPercentage       float64        `json:"anomaly_percentage"`                  // Expected anomaly fraction
-	Start                   *float64       `json:"start,omitempty"`                     // Query start timestamp (Unix)
-	End                     *float64       `json:"end,omitempty"`                       // Query end timestamp (Unix)
-	Step                    string         `json:"step,omitempty"`                      // Query step/resolution
-	DatasourceType          string         `json:"datasource_type,omitempty"`           // Datasource type: vm or vlogs
-	DatasourceURL           *string        `json:"datasource_url,omitempty"`            // Datasource URL
-	TenantID                *string        `json:"tenant_id,omitempty"`                 // Optional tenant ID
-	PassAuthHeaders         bool           `json:"pass_auth_headers,omitempty"`         // Forward Authorization header
-	Timezone                *string        `json:"timezone,omitempty"`                  // IANA timezone for profile-guided hints
-	ShortGapSteps           *int           `json:"short_gap_steps,omitempty"`           // Short gaps to interpolate during profiling
-	Limit                   *int           `json:"limit,omitempty"`                     // Sampled series cap
-	UseProfileHints         *bool          `json:"use_profile_hints,omitempty"`         // Narrow search space using sampled profile
-	OptimizationParams      map[string]any `json:"optimization_params,omitempty"`       // Optuna constraints
-	OptimizedBusinessParams []string       `json:"optimized_business_params,omitempty"` // Business params to tune
-	FrozenParams            map[string]any `json:"frozen_params,omitempty"`             // Fixed top-level model params
+	Queries                 map[string]NamedQuerySpec `json:"queries,omitempty"`
+	Query                   string                    `json:"query,omitempty"`                     // PromQL/LogsQL query to sample and tune
+	TunedClassName          string                    `json:"tuned_class_name"`                    // Model class or alias to tune
+	AnomalyPercentage       float64                   `json:"anomaly_percentage"`                  // Expected anomaly fraction
+	Start                   *float64                  `json:"start,omitempty"`                     // Query start timestamp (Unix)
+	End                     *float64                  `json:"end,omitempty"`                       // Query end timestamp (Unix)
+	Step                    string                    `json:"step,omitempty"`                      // Query step/resolution
+	DatasourceType          string                    `json:"datasource_type,omitempty"`           // Datasource type: vm or vlogs
+	DatasourceURL           *string                   `json:"datasource_url,omitempty"`            // Datasource URL
+	TenantID                *string                   `json:"tenant_id,omitempty"`                 // Optional tenant ID
+	PassAuthHeaders         bool                      `json:"pass_auth_headers,omitempty"`         // Forward Authorization header
+	Timezone                *string                   `json:"timezone,omitempty"`                  // IANA timezone for profile-guided hints
+	ShortGapSteps           *int                      `json:"short_gap_steps,omitempty"`           // Short gaps to interpolate during profiling
+	Limit                   *int                      `json:"limit,omitempty"`                     // Sampled series cap
+	UseProfileHints         *bool                     `json:"use_profile_hints,omitempty"`         // Narrow search space using sampled profile
+	OptimizationParams      map[string]any            `json:"optimization_params,omitempty"`       // Optuna constraints
+	OptimizedBusinessParams []string                  `json:"optimized_business_params,omitempty"` // Business params to tune
+	FrozenParams            map[string]any            `json:"frozen_params,omitempty"`             // Fixed top-level model params
 }
 
 // AutotuneTaskResponse represents the response after creating an autotune task.

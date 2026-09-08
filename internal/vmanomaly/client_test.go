@@ -1318,3 +1318,37 @@ func TestClient_Compatibility(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateAutotuneTaskPreservesNamedQueriesWithoutLegacyExpression(t *testing.T) {
+	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var wire map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&wire); err != nil {
+			t.Fatal(err)
+		}
+		if _, exists := wire["query"]; exists {
+			t.Fatal("named input must not include a legacy expression")
+		}
+		var queries map[string]NamedQuerySpec
+		if err := json.Unmarshal(wire["queries"], &queries); err != nil {
+			t.Fatal(err)
+		}
+		assertEqual(t, len(queries), 2)
+		assertEqual(t, queries["cpu_usage"].Expr, "cpu")
+		assertEqual(t, queries["cpu_usage"].MinRelDevFromExpected[1], 15.0)
+		assertEqual(t, queries["ram_usage"].MinRelDevFromExpected[0], 15.0)
+		assertEqual(t, queries["ram_usage"].DataRange[0], "-Infinity")
+		_, _ = w.Write([]byte(`{"task_id":"joint","status":"running"}`))
+	})
+	defer server.Close()
+	result, err := client.CreateAutotuneTask(context.Background(), &AutotuneTaskRequest{
+		TunedClassName: "temporal_envelope_multivariate", FrozenParams: map[string]any{"groupby": []string{"service"}},
+		Queries: map[string]NamedQuerySpec{
+			"cpu_usage": {Expr: "cpu", DetectionDirection: "above_expected", MinRelDevFromExpected: []float64{0, 15}},
+			"ram_usage": {Expr: "ram", DataRange: []any{"-Infinity", "Infinity"}, DetectionDirection: "below_expected", MinRelDevFromExpected: []float64{15, 0}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertEqual(t, result.TaskID, "joint")
+}

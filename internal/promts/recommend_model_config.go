@@ -90,7 +90,7 @@ const contextMessage = `Use measured profiles, user anomaly expectations, and th
 - If it reports strong trend, one or more meaningful calendar seasonalities, changepoints/persistent shifts, or a combination of these, prefer temporal_envelope as the best balance of coverage, continuous adaptation, robustness, configuration simplicity, and resource use.
 - If it reports no strong trend and no strong seasonality, prefer mad_online/mad when robustness is important or the distribution is uncertain. Prefer zscore_online/zscore only when the sample is stable/light-tailed and standard-deviation-based magnitude is useful. Do not add seasonal complexity to a simple profile.
 - In VMUI, check vmanomaly_list_models and vmanomaly_get_model_schema for multivariate availability on the connected server. Preserve the experimental label and explain its limitations.
-- Use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. Inspect the actual autotune tool contract: a single expression returning multiple series does not replace named queries with separate policies.
+- Use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. Use one shared multivariate autotune task with the named queries and their policies, plus frozen_params.groupby when grouping is needed.
 - A joint-score multivariate model remains many-to-one when it emits per-channel y, forecast, or bound diagnostics. Model topology describes service routing and identity, not auxiliary output width; account for those series in writer cardinality planning.
 - Prophet, Holt-Winters, and Isolation Forest remain supported for existing configurations but are planned for future deprecation. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
@@ -196,12 +196,13 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
    - No parameters required
    - Returns: UI-compatible models exposed by this vmanomaly instance, including experimental multivariate models when available
    - In VMUI, use this to verify availability before selecting any model
-   - For autotune, inspect its input schema; never silently discard named queries or per-query policies to fit a single-query tool
+   - For autotune, pass queries keyed by alias and preserve per-query policies. Use frozen_params.groupby and tune the actual multivariate class. Never merge independent univariate studies into a supposedly tuned multivariate configuration.
 
 **Schema and documentation**
 Fetch the chosen model schema once and treat its constraints as authoritative. Search documentation with focused terms; results are ranked excerpts, not full documents. Use vmanomaly_read_doc_section with the returned URI and character offset to fetch missing detail. Reuse existing schemas and evidence. Never truncate schemas or infer missing policies from an excerpt.
 
 **Phase 3: Shared autotune on sampled data**
+For a named-query experiment, pass the complete active queries map (alias to expr and explicit policies), not query. Use the original multivariate class and freeze groupby when present. One study evaluates joint channel groups and returns one shared configuration. Independent univariate studies cannot establish multivariate tuning. If an older server rejects the named-query contract, explain the limitation rather than falling back silently. anomaly_percentage is a tuning target, not a false-positive guarantee.
 6. **vmanomaly_create_autotune_task** (query, tuned_class_name, anomaly_percentage, step, ...), then **vmanomaly_get_autotune_task** until done
    - Run this after choosing a concrete model class from the sampled profile
    - Returns: bestParams, modelConfig, bestScore, sampled profile, trial stats, and sampling stats
