@@ -22,7 +22,7 @@ $(LOCALBIN):
 # CI Tool versions
 GOLANGCI_LINT_VERSION ?= v1.62.2
 WWHRD_VERSION ?= v0.4.0
-GOVULNCHECK_VERSION ?= latest
+GOVULNCHECK_VERSION ?= v1.7.0
 
 # CI Tool paths
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
