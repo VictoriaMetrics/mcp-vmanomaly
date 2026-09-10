@@ -3,6 +3,26 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
+## [v0.4.0] - 2026-09-10
+
+### Features
+
+- Shared autotune accepts named queries with aliases and individual business policies. Tune aligned multivariate groups in one study with `frozen_params.groupby`, returning one shared model configuration; legacy single-expression requests remain supported.
+- Added `vmanomaly_read_doc_section` to retrieve documentation beyond search excerpts.
+
+### Improvements
+
+- Updated Copilot guidance for complete named-query suggestions, policy inheritance, stale-state checks, joint multivariate tuning, and online-model scheduling.
+- Reduced repeated prompt content while retaining anomaly-type and model-selection decision rules. Compact tool results and focused documentation excerpts reduce context use; the default search limit is now 5 instead of 30, with explicit limits up to 100 supported.
+- At identical requested top-k=30, measured serialized search responses were 40–69% smaller across four benchmark searches, preserving ranking and returned counts. These are payload measurements, not token or billing guarantees; exact sizes depend on documentation content.
+- Refreshed embedded documentation for [vmanomaly v1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305), including VMUI v1.9.0, experimental multivariate investigation, named-query workflows, Copilot usage monitoring, and migration guidance.
+- Updated the integration environment to vmanomaly v1.30.5 and pinned the vulnerability scanner to a version compatible with the repository's Go toolchain.
+
+### Compatibility
+
+- Named-query shared autotune and the corresponding UI suggestion workflow require vmanomaly v1.30.5 or newer. Older servers retain their existing capabilities; clients should inspect available tool schemas.
+- Search results can contain excerpts. Follow continuation metadata with `vmanomaly_read_doc_section` when more context is needed, and specify `limit` explicitly when more than five results are required.
+
 ## [v0.3.4] - 2026-08-28
 
 ### Improvements
