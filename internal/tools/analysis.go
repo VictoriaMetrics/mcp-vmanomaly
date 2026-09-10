@@ -29,25 +29,26 @@ type TimeseriesCharacteristicsArgs struct {
 }
 
 type AutotuneTaskArgs struct {
-	Query                   string         `json:"query" jsonschema:"required,description=Exact PromQL or LogsQL query to sample and tune"`
-	TunedClassName          string         `json:"tuned_class_name" jsonschema:"required,description=Model class or alias to tune. For UI-compatible univariate models call vmanomaly_list_models first. Outside VMUI documented multivariate aliases can be tuned even though UI discovery intentionally hides them."`
-	AnomalyPercentage       *float64       `json:"anomaly_percentage,omitempty" jsonschema:"description=Expected anomaly fraction in the range [0 0.5) for unsupervised tuning (conservative MCP default: 0.02)"`
-	Step                    string         `json:"step,omitempty" jsonschema:"description=Query step/resolution (default: '1s'; examples: '1m' '5m' '1h'). Use the same step from time-series characteristics and the final detect-anomalies task/config."`
-	Start                   *float64       `json:"start,omitempty" jsonschema:"description=Optional query start timestamp as Unix seconds"`
-	End                     *float64       `json:"end,omitempty" jsonschema:"description=Optional query end timestamp as Unix seconds"`
-	DatasourceType          string         `json:"datasource_type,omitempty" jsonschema:"enum=vm,enum=vlogs,description=Datasource type (default: 'vm')"`
-	DatasourceURL           string         `json:"datasource_url,omitempty" jsonschema:"format=uri,description=Optional VictoriaMetrics or VictoriaLogs datasource URL"`
-	TenantID                string         `json:"tenant_id,omitempty" jsonschema:"description=Optional tenant ID for cluster datasources"`
-	PassAuthHeaders         bool           `json:"pass_auth_headers,omitempty" jsonschema:"description=Forward MCP request authorization headers to datasource"`
-	Timezone                string         `json:"timezone,omitempty" jsonschema:"description=IANA timezone for profile-guided calendar hints, e.g. 'Europe/Warsaw'"`
-	ShortGapSteps           *int           `json:"short_gap_steps,omitempty" jsonschema:"description=Short gaps to interpolate during profiling (default: 2)"`
-	Limit                   *int           `json:"limit,omitempty" jsonschema:"description=Sampled series cap for profiling and shared autotune (default: 100)"`
-	UseProfileHints         *bool          `json:"use_profile_hints,omitempty" jsonschema:"description=Pass sampled time-series characteristics as search hints when the selected model search space supports them (default: true)"`
-	OptimizationNTrials     *int           `json:"optimization_n_trials,omitempty" jsonschema:"description=Maximum Optuna trials. Use small values for interactive Copilot runs; MCP default is 32."`
-	OptimizationTimeout     *float64       `json:"optimization_timeout,omitempty" jsonschema:"description=Optimization timeout in seconds. Use small values for interactive Copilot runs; MCP default is 8."`
-	OptimizationParams      map[string]any `json:"optimization_params,omitempty" jsonschema:"description=Advanced tuning controls: n_trials timeout n_jobs n_splits train_val_ratio seed validation_scheme beta show_progress_bar gc_after_trial exact optimize_complexity. Set exact=true for online models when production uses causal exact inference. optimization_n_trials and optimization_timeout override matching keys."`
-	OptimizedBusinessParams []string       `json:"optimized_business_params,omitempty" jsonschema:"description=Legacy model-local business parameters to tune: detection_direction min_dev_from_expected min_rel_dev_from_expected. For vmanomaly v1.30.2+ prefer freezing stable policies during tuning and emitting them under reader.queries.<alias> in complete configs."`
-	FrozenParams            map[string]any `json:"frozen_params,omitempty" jsonschema:"description=Top-level model parameters to freeze while tuning, e.g. detection_direction='above_expected'. For vmanomaly v1.30.2+ emit stable data_range detection_direction and deviation policies under reader.queries.<alias> in complete configs. Reserved keys class and class_name are rejected. For Prophet with step < 1h, include compression={window:'1h',agg_method:'mean',adjust_boundaries:true} unless sub-hour baseline patterns are required."`
+	Queries                 map[string]vmanomaly.NamedQuerySpec `json:"queries,omitempty" jsonschema:"description=Named expressions keyed by alias with optional per-query business policies. One shared study across all inputs; use frozen_params.groupby for multivariate grouping."`
+	Query                   string                              `json:"query,omitempty" jsonschema:"description=Legacy expression; provide exactly one of query or queries"`
+	TunedClassName          string                              `json:"tuned_class_name" jsonschema:"required,description=Model class or alias to tune. Call vmanomaly_list_models first for available models. Supports one expression or named queries with separate business policies. Tune the multivariate class directly for joint detection; never merge separate univariate studies."`
+	AnomalyPercentage       *float64                            `json:"anomaly_percentage,omitempty" jsonschema:"description=Expected anomaly fraction in the range [0 0.5) for unsupervised tuning (conservative MCP default: 0.02)"`
+	Step                    string                              `json:"step,omitempty" jsonschema:"description=Query step/resolution (default: '1s'; examples: '1m' '5m' '1h'). Use the same step from time-series characteristics and the final detect-anomalies task/config."`
+	Start                   *float64                            `json:"start,omitempty" jsonschema:"description=Optional query start timestamp as Unix seconds"`
+	End                     *float64                            `json:"end,omitempty" jsonschema:"description=Optional query end timestamp as Unix seconds"`
+	DatasourceType          string                              `json:"datasource_type,omitempty" jsonschema:"enum=vm,enum=vlogs,description=Datasource type (default: 'vm')"`
+	DatasourceURL           string                              `json:"datasource_url,omitempty" jsonschema:"format=uri,description=Optional VictoriaMetrics or VictoriaLogs datasource URL"`
+	TenantID                string                              `json:"tenant_id,omitempty" jsonschema:"description=Optional tenant ID for cluster datasources"`
+	PassAuthHeaders         bool                                `json:"pass_auth_headers,omitempty" jsonschema:"description=Forward MCP request authorization headers to datasource"`
+	Timezone                string                              `json:"timezone,omitempty" jsonschema:"description=IANA timezone for profile-guided calendar hints, e.g. 'Europe/Warsaw'"`
+	ShortGapSteps           *int                                `json:"short_gap_steps,omitempty" jsonschema:"description=Short gaps to interpolate during profiling (default: 2)"`
+	Limit                   *int                                `json:"limit,omitempty" jsonschema:"description=Sampled series cap for profiling and shared autotune (default: 100)"`
+	UseProfileHints         *bool                               `json:"use_profile_hints,omitempty" jsonschema:"description=Pass sampled time-series characteristics as search hints when the selected model search space supports them (default: true)"`
+	OptimizationNTrials     *int                                `json:"optimization_n_trials,omitempty" jsonschema:"description=Maximum Optuna trials. Use small values for interactive Copilot runs; MCP default is 32."`
+	OptimizationTimeout     *float64                            `json:"optimization_timeout,omitempty" jsonschema:"description=Optimization timeout in seconds. Use small values for interactive Copilot runs; MCP default is 8."`
+	OptimizationParams      map[string]any                      `json:"optimization_params,omitempty" jsonschema:"description=Advanced tuning controls: n_trials timeout n_jobs n_splits train_val_ratio seed validation_scheme beta show_progress_bar gc_after_trial exact optimize_complexity. Set exact=true for online models when production uses causal exact inference. optimization_n_trials and optimization_timeout override matching keys."`
+	OptimizedBusinessParams []string                            `json:"optimized_business_params,omitempty" jsonschema:"description=Legacy model-local business parameters to tune: detection_direction min_dev_from_expected min_rel_dev_from_expected. For vmanomaly v1.30.2+ prefer freezing stable policies during tuning and emitting them under reader.queries.<alias> in complete configs."`
+	FrozenParams            map[string]any                      `json:"frozen_params,omitempty" jsonschema:"description=Top-level model parameters to freeze while tuning, e.g. detection_direction='above_expected'. For vmanomaly v1.30.2+ emit stable data_range detection_direction and deviation policies under reader.queries.<alias> in complete configs. Reserved keys class and class_name are rejected. For Prophet with step < 1h, include compression={window:'1h',agg_method:'mean',adjust_boundaries:true} unless sub-hour baseline patterns are required."`
 }
 
 type AutotuneTaskIDArgs struct {
@@ -154,7 +155,7 @@ func handleTimeseriesCharacteristics(client *vmanomaly.Client) func(ctx context.
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to profile time series: %v", err)), nil
 		}
 
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -165,12 +166,25 @@ func handleTimeseriesCharacteristics(client *vmanomaly.Client) func(ctx context.
 
 func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args AutotuneTaskArgs) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, req mcp.CallToolRequest, args AutotuneTaskArgs) (*mcp.CallToolResult, error) {
-		query, err := requiredQuery(args.Query)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+		query := strings.TrimSpace(args.Query)
+		if args.Queries != nil {
+			if query != "" || len(args.Queries) == 0 || len(args.Queries) > 50 {
+				return mcp.NewToolResultError("Provide exactly one of query or queries (1-50 named entries)."), nil
+			}
+			for alias, spec := range args.Queries {
+				if strings.TrimSpace(alias) == "" || alias != strings.TrimSpace(alias) || strings.TrimSpace(spec.Expr) == "" {
+					return mcp.NewToolResultError("Named queries require non-empty trimmed aliases and expressions."), nil
+				}
+			}
+		} else {
+			var err error
+			query, err = requiredQuery(args.Query)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 		}
 		if strings.TrimSpace(args.TunedClassName) == "" {
-			return mcp.NewToolResultError("Invalid tuned_class_name: provide a supported model class or alias; use vmanomaly_list_models for UI-compatible models or documented multivariate aliases outside VMUI"), nil
+			return mcp.NewToolResultError("Invalid tuned_class_name: provide a supported model class or alias; use vmanomaly_list_models for available models on the connected server"), nil
 		}
 		anomalyPercentage := defaultFloat(args.AnomalyPercentage, defaultInteractiveAnomalyFraction)
 		if anomalyPercentage < 0 || anomalyPercentage >= 0.5 {
@@ -188,6 +202,7 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 		}
 		tuneReq := &vmanomaly.AutotuneTaskRequest{
 			Query:                   query,
+			Queries:                 args.Queries,
 			TunedClassName:          strings.TrimSpace(args.TunedClassName),
 			AnomalyPercentage:       anomalyPercentage,
 			Step:                    defaultString(args.Step, "1s"),
@@ -229,7 +244,7 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 			)), nil
 		}
 
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -248,7 +263,7 @@ func handleGetAutotuneTask(client *vmanomaly.Client) func(ctx context.Context, r
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to get shared autotune task: %v", err)), nil
 		}
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}
@@ -262,7 +277,7 @@ func handleCancelAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to cancel shared autotune task: %v", err)), nil
 		}
-		responseJSON, err := json.MarshalIndent(result, "", "  ")
+		responseJSON, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err)), nil
 		}

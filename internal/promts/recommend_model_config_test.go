@@ -72,9 +72,10 @@ func TestRecommendationToolGuidanceDoesNotRecommendOfflineModelsForNewConfigs(t 
 
 func TestRecommendationPromptExplainsMultivariateUIBoundary(t *testing.T) {
 	for _, expected := range []string{
-		"In VMUI, never recommend a multivariate model",
-		"documented multivariate aliases",
-		"intentionally absent from vmanomaly_list_models and vmanomaly_get_model_schema",
+		"check vmanomaly_list_models and vmanomaly_get_model_schema for multivariate availability",
+		"Preserve the experimental label",
+		"Copy expected_revision from the current query revision",
+		"preserve untouched and disabled rows",
 	} {
 		if !strings.Contains(contextMessage, expected) {
 			t.Errorf("context prompt does not contain %q", expected)
@@ -108,8 +109,8 @@ func TestRecommendationPromptRequiresAndReusesExactQuery(t *testing.T) {
 
 func TestRecommendationPromptUsesQueryLevelBusinessPolicies(t *testing.T) {
 	for _, expected := range []string{
-		"keep detection_direction, data_range, min_dev_from_expected, and min_rel_dev_from_expected in the model configuration",
-		"suggest_query_config expose only the query expression and language",
+		"per-query detection_direction, data_range, min_dev_from_expected and min_rel_dev_from_expected",
+		"When the tool exposes queries and expected_revision",
 		"complete vmanomaly v1.30.2+ deployment configurations outside that UI flow",
 		"stable KPI policies belong to reader.queries.<alias>",
 		"An explicit query value is authoritative",
@@ -146,5 +147,38 @@ func TestRecommendationPromptUsesBoundedWriterAndStableShardingGuidance(t *testi
 		if !strings.Contains(contextMessage, expected) {
 			t.Errorf("context prompt does not contain %q", expected)
 		}
+	}
+}
+
+func TestRecommendationPromptRetainsDecisionFramework(t *testing.T) {
+	for _, rule := range []string{
+		"point anomalies are isolated deviations",
+		"contextual anomalies depend on time",
+		"collective anomalies are unusual sequences",
+		"not synonymous with temporal collective anomalies",
+		"treat them as a hypothesis to test",
+		"Check missing values, gaps, sparsity, intermittency",
+		"do not assume a model supports missing data",
+		"Prefer univariate models for independent metrics",
+		"Balance latency, memory/CPU, cardinality, interpretability",
+		"Online models adapt during causal inference",
+		"Offline models rely on refits",
+		"Ask which misses and false alarms matter",
+		"Validate against known incidents and normal periods",
+		"Monitor alert quality and revisit assumptions",
+		"fit_every longer than the selected inference date range",
+	} {
+		if !strings.Contains(contextMessage, rule) {
+			t.Errorf("recommendation prompt lost decision rule %q", rule)
+		}
+	}
+}
+
+func TestWorkflowKeepsQueryPoliciesSeparateFromModelDefaults(t *testing.T) {
+	if !strings.Contains(toolGuidanceMessage, "apply per-query policies through suggest_query_config with queries and expected_revision") {
+		t.Fatal("workflow must apply query policies through the named-query suggestion contract")
+	}
+	if strings.Contains(toolGuidanceMessage, "in suggest_model_config for VMUI") {
+		t.Fatal("workflow still directs query overrides into shared model defaults")
 	}
 }
