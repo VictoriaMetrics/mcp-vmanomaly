@@ -173,3 +173,12 @@ func TestRecommendationPromptRetainsDecisionFramework(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkflowKeepsQueryPoliciesSeparateFromModelDefaults(t *testing.T) {
+	if !strings.Contains(toolGuidanceMessage, "apply per-query policies through suggest_query_config with queries and expected_revision") {
+		t.Fatal("workflow must apply query policies through the named-query suggestion contract")
+	}
+	if strings.Contains(toolGuidanceMessage, "in suggest_model_config for VMUI") {
+		t.Fatal("workflow still directs query overrides into shared model defaults")
+	}
+}
