@@ -149,6 +149,7 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.4.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.0...v0.4.1
 [v0.3.4]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.2...v0.3.3
