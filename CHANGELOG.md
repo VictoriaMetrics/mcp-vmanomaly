@@ -3,6 +3,18 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
+## [v0.4.2] - 2026-09-24
+
+### Improvements
+
+- Refreshed embedded documentation for [vmanomaly v1.30.7](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1307), including UI v1.9.2, incident investigation links, model choices and self-monitoring.
+- Updated recommendation guidance for persisted incident results and presentation-only UI model choices.
+- Updated the integration environment to vmanomaly v1.30.7 and the build toolchain to Go 1.26.8.
+
+### Security
+
+- Updated `golang.org/x/text` and `golang.org/x/sys` to fix [GO-2026-5970](https://pkg.go.dev/vuln/GO-2026-5970) and [GO-2026-5024](https://pkg.go.dev/vuln/GO-2026-5024).
+
 ## [v0.4.1] - 2026-09-17
 
 ### Improvements
