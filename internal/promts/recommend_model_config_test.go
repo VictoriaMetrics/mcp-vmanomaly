@@ -167,6 +167,10 @@ func TestRecommendationPromptRetainsDecisionFramework(t *testing.T) {
 		"Validate against known incidents and normal periods",
 		"Monitor alert quality and revisit assumptions",
 		"fit_every longer than the selected inference date range",
+		"inspect persisted results in the alert's absolute time window before recommending a new detection run",
+		"Discover available tools before claiming incident-context support; a browser redirect is not a data tool",
+		"server.ui_allowed_models setting only curates UI selectors and Auto targets",
+		"it does not restrict model discovery, Copilot suggestions or API execution",
 	} {
 		if !strings.Contains(contextMessage, rule) {
 			t.Errorf("recommendation prompt lost decision rule %q", rule)

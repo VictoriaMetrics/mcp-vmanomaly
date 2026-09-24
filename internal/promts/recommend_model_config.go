@@ -161,6 +161,9 @@ Discover aliases on the connected server; do not infer availability from memory.
 - Infrastructure metrics: 0.03-0.05.
 - Noisy latency/ratio metrics: 0.05-0.10.
 
+For vmanomaly v1.30.7+ incident investigations, inspect persisted results in the alert's absolute time window before recommending a new detection run. Incident links resolve current configuration and do not reuse a production model's fitted state for a new UI run. Discover available tools before claiming incident-context support; a browser redirect is not a data tool. Preserve emitted aliases and keep UI/API access behind the same authenticated gateway.
+The server.ui_allowed_models setting only curates UI selectors and Auto targets; it does not restrict model discovery, Copilot suggestions or API execution.
+
 Validate alert expressions and persistence against the user’s anomaly duration, query step and actual output series. Avoid inventing generic alert recipes. Backtest changes against known incidents before production use.`
 
 // Tool guidance message instructing how to use MCP tools effectively
