@@ -96,10 +96,10 @@ func buildCompatibilitySummary(r CheckCompatibilityResponse) string {
 		sb.WriteString("No persisted state found (fresh install). ")
 		sb.WriteString("System is ready to use with any configuration.")
 	case "compatible":
-		sb.WriteString(fmt.Sprintf("State is COMPATIBLE with runtime %s. ", r.RuntimeVersion))
+		fmt.Fprintf(&sb, "State is COMPATIBLE with runtime %s. ", r.RuntimeVersion)
 		sb.WriteString("No migration actions required.")
 	case "incompatible":
-		sb.WriteString(fmt.Sprintf("State is INCOMPATIBLE with runtime %s. ", r.RuntimeVersion))
+		fmt.Fprintf(&sb, "State is INCOMPATIBLE with runtime %s. ", r.RuntimeVersion)
 
 		if r.DropEverything {
 			sb.WriteString("CRITICAL: All persisted state must be dropped before upgrade. ")
@@ -112,12 +112,12 @@ func buildCompatibilitySummary(r CheckCompatibilityResponse) string {
 				actions = append(actions, "purge reader data")
 			}
 			if len(actions) > 0 {
-				sb.WriteString(fmt.Sprintf("Required actions: %s. ", strings.Join(actions, "; ")))
+				fmt.Fprintf(&sb, "Required actions: %s. ", strings.Join(actions, "; "))
 			}
 		}
 
 		if r.Reason != nil {
-			sb.WriteString(fmt.Sprintf("Reason: %s", *r.Reason))
+			fmt.Fprintf(&sb, "Reason: %s", *r.Reason)
 		}
 	}
 
