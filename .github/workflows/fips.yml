@@ -64,7 +64,6 @@ jobs:
           fi
           grep -q 'this FIPS build requires FIPS mode' /tmp/fips-disabled.log
       - name: Exercise container MCP protocol
-        run: go test -tags=fips -run TestFIPSContainer -count=1 ./cmd/mcp-vmanomaly
+        run: GOFIPS140="$(cat cmd/mcp-vmanomaly/fips_module.txt)" go test -tags=fips -run TestFIPSContainer -count=1 ./cmd/mcp-vmanomaly
         env:
-          GOFIPS140: v1.0.0
           MCP_TEST_FIPS_IMAGE: mcp-vmanomaly:fips

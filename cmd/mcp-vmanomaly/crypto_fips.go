@@ -4,12 +4,18 @@ package main
 
 import (
 	"crypto/fips140"
+	_ "embed"
 	"fmt"
+	"strings"
 )
 
-// Match the frozen module selected in Makefile and .goreleaser.yaml. A build tag
-// alone or GODEBUG=fips140=on with the toolchain's current module is insufficient.
-const requiredFIPSModule = "v1.0.0"
+// Make, GoReleaser and CI read this same pin. Embed it so the production image
+// needs no configuration file and the guard can still reject a mismatched build.
+//
+//go:embed fips_module.txt
+var fipsModulePin string
+
+var requiredFIPSModule = strings.TrimSpace(fipsModulePin)
 
 func checkCryptoMode() error {
 	if !fips140.Enabled() {

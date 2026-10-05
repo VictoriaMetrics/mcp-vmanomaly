@@ -27,7 +27,7 @@ builds:
   - id: fips
     env:
       - CGO_ENABLED=0
-      - GOFIPS140=v1.0.0
+      - 'GOFIPS140={{ mustReadFile "cmd/mcp-vmanomaly/fips_module.txt" | trim }}'
     goos: [linux]
     goarch: [amd64, arm64]
     main: ./cmd/mcp-vmanomaly

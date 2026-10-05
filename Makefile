@@ -157,8 +157,8 @@ docker-run: ## Run Docker container
 
 .DEFAULT_GOAL := help
 
-# Pin the validated module; the FIPS startup guard checks this identity as well.
-FIPS_MODULE = v1.0.0
+# Shared with GoReleaser, CI and the embedded startup guard.
+FIPS_MODULE = $(shell cat cmd/mcp-vmanomaly/fips_module.txt)
 FIPS_IMAGE ?= mcp-vmanomaly:fips
 # Local builds identify the source revision; callers may override archive builds.
 FIPS_BUILD_VERSION ?= $(or $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//'),dev)
