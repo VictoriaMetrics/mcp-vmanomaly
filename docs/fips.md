@@ -11,7 +11,7 @@ make build-fips
 ./bin/mcp-vmanomaly-fips --version
 make test-fips
 make docker-build-fips
-MCP_TEST_FIPS_IMAGE=mcp-vmanomaly:fips GOFIPS140="$(cat cmd/mcp-vmanomaly/fips_module.txt)" go test -tags=fips -run TestFIPSContainer ./cmd/mcp-vmanomaly
+MCP_TEST_FIPS_IMAGE=mcp-vmanomaly:fips GOFIPS140="$(cat cmd/mcp-vmanomaly/fips_module.txt)" go test -count=1 -tags=fips -run TestFIPSContainer ./cmd/mcp-vmanomaly
 ```
 
 The `fips` build tag enables a startup guard. It rejects a disabled FIPS mode or a different crypto-module version before starting the service. Building with the tag alone is insufficient: use the Make target or the matching GoReleaser build. `--version` reports the selected module and whether it is enabled. Ordinary builds retain their existing behavior.
