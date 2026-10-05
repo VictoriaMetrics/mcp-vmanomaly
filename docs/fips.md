@@ -16,6 +16,8 @@ MCP_TEST_FIPS_IMAGE=mcp-vmanomaly:fips GOFIPS140=v1.0.0 go test -tags=fips -run 
 
 The `fips` build tag enables a startup guard. It rejects a disabled FIPS mode or a different crypto-module version before starting the service. Building with the tag alone is insufficient: use the Make target or the matching GoReleaser build. `--version` reports the selected module and whether it is enabled. Ordinary builds retain their existing behavior.
 
+Local Make builds also report the Git tag/revision (including a dirty-tree suffix) and commit date. Source archives without Git metadata fall back to `dev`/`unknown`; set `FIPS_BUILD_VERSION` and `FIPS_BUILD_DATE` to supply that provenance explicitly. GoReleaser supplies release version and commit date itself. CI checks the module identity through the Make test suite, starts the Make-built executable, and starts the GoReleaser-built container; a build pin that disagrees with the startup guard fails these checks.
+
 The FIPS image packages the static binary and CA certificates into scratch and runs as UID/GID 1000. It contains no shell or package manager. GoReleaser defines separate `-fips` image tags and `_fips` release archives for Linux amd64/arm64; these artifacts become available only after a release containing this change. Existing standard artifacts and their names are preserved.
 
 ## Crypto and transport scope

@@ -2,8 +2,13 @@ name: FIPS builds
 
 on:
   pull_request: {}
-  push: {}
+  push:
+    branches: [main]
   workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -27,6 +32,11 @@ jobs:
           go-version-file: go.mod
       - name: Test approved-mode and strict diagnostic paths
         run: make test-fips
+      - name: Check local build metadata and module guard
+        run: |
+          make build-fips FIPS_BUILD_VERSION=ci-check FIPS_BUILD_DATE=2000-01-01T00:00:00Z
+          bin/mcp-vmanomaly-fips --version > /tmp/fips-version.log
+          grep -F 'vci-check (date: 2000-01-01T00:00:00Z)' /tmp/fips-version.log
       - name: Check release configuration
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:

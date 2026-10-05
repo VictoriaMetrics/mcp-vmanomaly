@@ -64,8 +64,12 @@ func TestFIPSContainer(t *testing.T) {
 		return response.Result
 	}
 	initialized := exchange(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"fips-test","version":"1"}}}`, 1)
-	if len(initialized["serverInfo"]) == 0 {
-		t.Fatal("initialize response has no server identity")
+	var identity struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(initialized["serverInfo"], &identity); err != nil || identity.Name != serverName || identity.Version == "" {
+		t.Fatalf("invalid server identity: %s (%v)", initialized["serverInfo"], err)
 	}
 	if _, err := fmt.Fprintln(stdin, `{"jsonrpc":"2.0","method":"notifications/initialized"}`); err != nil {
 		t.Fatal(err)

@@ -19,7 +19,7 @@ func TestFIPSBuildIdentity(t *testing.T) {
 	if code := run([]string{"--version"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("version failed: %s", stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "FIPS module: v1.0.0, enabled: true") {
+	if !strings.Contains(stdout.String(), "FIPS module: "+requiredFIPSModule+", enabled: true") {
 		t.Fatalf("missing crypto build identity: %s", stdout.String())
 	}
 }

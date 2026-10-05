@@ -160,11 +160,14 @@ docker-run: ## Run Docker container
 # Pin the validated module; the FIPS startup guard checks this identity as well.
 FIPS_MODULE = v1.0.0
 FIPS_IMAGE ?= mcp-vmanomaly:fips
+# Local builds identify the source revision; callers may override archive builds.
+FIPS_BUILD_VERSION ?= $(or $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//'),dev)
+FIPS_BUILD_DATE ?= $(or $(shell git log -1 --format=%cI 2>/dev/null),unknown)
 
 .PHONY: build-fips test-fips docker-build-fips
 build-fips: ## Build the Linux FIPS variant for the current architecture
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux CGO_ENABLED=0 GOFIPS140=$(FIPS_MODULE) $(GOBUILD) -tags=fips -trimpath -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-fips $(MAIN_PATH)
+	GOOS=linux CGO_ENABLED=0 GOFIPS140=$(FIPS_MODULE) $(GOBUILD) -tags=fips -trimpath -ldflags="-s -w -buildid= -X main.version=$(FIPS_BUILD_VERSION) -X main.date=$(FIPS_BUILD_DATE)" -o $(BUILD_DIR)/$(BINARY_NAME)-fips $(MAIN_PATH)
 
 test-fips: ## Run the full suite and TLS/guard checks with the frozen FIPS module
 	GOFIPS140=$(FIPS_MODULE) $(GOTEST) -count=1 -tags=fips ./...
