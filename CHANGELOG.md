@@ -3,6 +3,12 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
+## [Unreleased]
+
+### Security
+
+- Add opt-in Linux FIPS builds with startup enforcement of the pinned Go Cryptographic Module and dedicated TLS/container regression checks.
+
 ## [v0.4.2] - 2026-09-24
 
 ### Improvements

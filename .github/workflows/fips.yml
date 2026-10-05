@@ -1,0 +1,60 @@
+name: FIPS builds
+
+on:
+  pull_request: {}
+  push: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  fips:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+      - name: Test approved-mode and strict diagnostic paths
+        run: make test-fips
+      - name: Check release configuration
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        with:
+          version: v2.18.2
+          args: check
+      - name: Build release binaries
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        with:
+          version: v2.18.2
+          args: build --snapshot --clean --single-target --id fips
+      - name: Package and check runtime image
+        run: |
+          arch=$(go env GOARCH)
+          context=$(mktemp -d)
+          trap 'rm -rf "$context"' EXIT
+          mkdir -p "$context/linux/$arch"
+          binary=$(find dist -type f -name mcp-vmanomaly-fips -print)
+          test -n "$binary" && test -f "$binary"
+          cp "$binary" "$context/linux/$arch/"
+          docker build -f Dockerfile.fips -t mcp-vmanomaly:fips "$context"
+          docker run --rm --network none mcp-vmanomaly:fips --version
+          if docker run --rm --network none -e GODEBUG=fips140=off mcp-vmanomaly:fips --version > /tmp/fips-disabled.log 2>&1; then
+            echo 'FIPS image incorrectly accepted disabled crypto mode' >&2
+            exit 1
+          fi
+          grep -q 'this FIPS build requires FIPS mode' /tmp/fips-disabled.log
+      - name: Exercise container MCP protocol
+        run: go test -tags=fips -run TestFIPSContainer -count=1 ./cmd/mcp-vmanomaly
+        env:
+          GOFIPS140: v1.0.0
+          MCP_TEST_FIPS_IMAGE: mcp-vmanomaly:fips

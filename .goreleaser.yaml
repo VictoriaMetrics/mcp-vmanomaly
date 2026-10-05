@@ -2,7 +2,8 @@ version: 2
 project_name: mcp-vmanomaly
 
 builds:
-  - env:
+  - id: standard
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -16,15 +17,30 @@ builds:
     ignore:
       - goos: windows
         goarch: arm
-    main: ./cmd/mcp-vmanomaly/main.go
+    main: ./cmd/mcp-vmanomaly
     binary: mcp-vmanomaly
     flags:
       - -trimpath
     ldflags:
       - -s -w -buildid= -X main.version={{.Version}} -X main.date={{ .CommitDate }}
 
+  - id: fips
+    env:
+      - CGO_ENABLED=0
+      - GOFIPS140=v1.0.0
+    goos: [linux]
+    goarch: [amd64, arm64]
+    main: ./cmd/mcp-vmanomaly
+    binary: mcp-vmanomaly-fips
+    tags: [fips]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -buildid= -X main.version={{.Version}} -X main.date={{ .CommitDate }}
+
 archives:
-  - formats: [tar.gz]
+  - id: standard
+    ids: [standard]
+    formats: [tar.gz]
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_
@@ -38,6 +54,11 @@ archives:
       - goos: windows
         formats: [zip]
 
+  - id: fips
+    ids: [fips]
+    formats: [tar.gz]
+    name_template: '{{ .ProjectName }}_Linux_{{ if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}_fips'
+
 checksum:
   name_template: 'checksums.txt'
 
@@ -48,7 +69,9 @@ changelog:
   sort: asc
 
 dockers_v2:
-  - images:
+  - id: standard
+    ids: [standard]
+    images:
       - "ghcr.io/victoriametrics/mcp-vmanomaly"
     tags:
       - latest
@@ -67,6 +90,26 @@ dockers_v2:
       "io.modelcontextprotocol.server.name": "io.github.VictoriaMetrics/mcp-vmanomaly"
     annotations:
       "project": "{{.ProjectName}}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+
+  - id: fips
+    ids: [fips]
+    images:
+      - "ghcr.io/victoriametrics/mcp-vmanomaly"
+    tags:
+      - "{{ .Version }}-fips"
+      - "v{{ .Version }}-fips"
+    dockerfile: Dockerfile.fips
+    labels:
+      "org.opencontainers.image.title": "{{.ProjectName}}"
+      "org.opencontainers.image.description": "MCP server built with the Go FIPS cryptographic module"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.licenses": "Apache-2.0"
     platforms:
       - linux/amd64
       - linux/arm64

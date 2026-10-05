@@ -156,3 +156,24 @@ docker-run: ## Run Docker container
 	docker run --rm -e VMANOMALY_ENDPOINT=$(VMANOMALY_ENDPOINT) $(BINARY_NAME):latest
 
 .DEFAULT_GOAL := help
+
+# Pin the validated module; the FIPS startup guard checks this identity as well.
+FIPS_MODULE = v1.0.0
+FIPS_IMAGE ?= mcp-vmanomaly:fips
+
+.PHONY: build-fips test-fips docker-build-fips
+build-fips: ## Build the Linux FIPS variant for the current architecture
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux CGO_ENABLED=0 GOFIPS140=$(FIPS_MODULE) $(GOBUILD) -tags=fips -trimpath -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-fips $(MAIN_PATH)
+
+test-fips: ## Run the full suite and TLS/guard checks with the frozen FIPS module
+	GOFIPS140=$(FIPS_MODULE) $(GOTEST) -count=1 -tags=fips ./...
+	GOFIPS140=$(FIPS_MODULE) GODEBUG=fips140=only $(GOTEST) -count=1 -tags=fips ./...
+
+docker-build-fips: build-fips ## Package the FIPS binary using the release Dockerfile
+	@set -eu; \
+	context=$$(mktemp -d); trap 'rm -rf "$$context"' EXIT; \
+	arch=$$($(GOCMD) env GOARCH); \
+	mkdir -p "$$context/linux/$$arch"; \
+	cp "$(BUILD_DIR)/$(BINARY_NAME)-fips" "$$context/linux/$$arch/$(BINARY_NAME)-fips"; \
+	docker build --platform="linux/$$arch" -f Dockerfile.fips -t "$(FIPS_IMAGE)" "$$context"
