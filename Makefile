@@ -156,3 +156,27 @@ docker-run: ## Run Docker container
 	docker run --rm -e VMANOMALY_ENDPOINT=$(VMANOMALY_ENDPOINT) $(BINARY_NAME):latest
 
 .DEFAULT_GOAL := help
+
+# Shared with GoReleaser, CI and the embedded startup guard.
+FIPS_MODULE = $(shell cat cmd/mcp-vmanomaly/fips_module.txt)
+FIPS_IMAGE ?= mcp-vmanomaly:fips
+# Local builds identify the source revision; callers may override archive builds.
+FIPS_BUILD_VERSION ?= $(or $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//'),dev)
+FIPS_BUILD_DATE ?= $(or $(shell git log -1 --format=%cI 2>/dev/null),unknown)
+
+.PHONY: build-fips test-fips docker-build-fips
+build-fips: ## Build the Linux FIPS variant for the current architecture
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux CGO_ENABLED=0 GOFIPS140=$(FIPS_MODULE) $(GOBUILD) -tags=fips -trimpath -ldflags="-s -w -buildid= -X main.version=$(FIPS_BUILD_VERSION) -X main.date=$(FIPS_BUILD_DATE)" -o $(BUILD_DIR)/$(BINARY_NAME)-fips $(MAIN_PATH)
+
+test-fips: ## Run the full suite and TLS/guard checks with the frozen FIPS module
+	GOFIPS140=$(FIPS_MODULE) $(GOTEST) -count=1 -tags=fips ./...
+	GOFIPS140=$(FIPS_MODULE) GODEBUG=fips140=only $(GOTEST) -count=1 -tags=fips ./...
+
+docker-build-fips: build-fips ## Package the FIPS binary using the release Dockerfile
+	@set -eu; \
+	context=$$(mktemp -d); trap 'rm -rf "$$context"' EXIT; \
+	arch=$$($(GOCMD) env GOARCH); \
+	mkdir -p "$$context/linux/$$arch"; \
+	cp "$(BUILD_DIR)/$(BINARY_NAME)-fips" "$$context/linux/$$arch/$(BINARY_NAME)-fips"; \
+	docker build --platform="linux/$$arch" -f Dockerfile.fips -t "$(FIPS_IMAGE)" "$$context"

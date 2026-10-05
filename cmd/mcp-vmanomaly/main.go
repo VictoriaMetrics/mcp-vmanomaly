@@ -47,6 +47,10 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	if err := checkCryptoMode(); err != nil {
+		_, _ = fmt.Fprintf(stderr, "Crypto initialization failed: %v\n", err)
+		return 1
+	}
 	flags := flag.NewFlagSet(serverName, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	showVersion := flags.Bool("version", false, "print version and exit")
@@ -58,7 +62,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if *showVersion {
-		_, _ = fmt.Fprintf(stdout, "%s v%s (date: %s)\n", serverName, version, date)
+		_, _ = fmt.Fprintf(stdout, "%s v%s (date: %s)%s\n", serverName, version, date, cryptoBuildInfo())
 		return 0
 	}
 

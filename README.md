@@ -606,3 +606,7 @@ Please feel free to submit issues, feature requests, or pull requests.
 For vmanomaly-specific questions, see the [vmanomaly documentation](https://docs.victoriametrics.com/anomaly-detection/).
 
 For MCP server issues, please open an issue in this repository.
+
+## FIPS builds
+
+Opt-in Linux amd64/arm64 builds use a pinned Go Cryptographic Module and refuse to start with FIPS mode disabled. See [FIPS build and deployment requirements](docs/fips.md) for local builds, release variants, and validation scope.

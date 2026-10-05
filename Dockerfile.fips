@@ -1,0 +1,15 @@
+# GoReleaser and `make docker-build-fips` provide prebuilt static binaries.
+FROM debian:trixie-slim AS runtime-files
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    mkdir -p /rootfs/tmp /rootfs/home/mcp && \
+    chmod 1777 /rootfs/tmp && chown 1000:1000 /rootfs/home/mcp
+
+FROM scratch
+ARG TARGETPLATFORM
+COPY --from=runtime-files /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=runtime-files /rootfs/ /
+COPY $TARGETPLATFORM/mcp-vmanomaly-fips /usr/local/bin/mcp-vmanomaly
+USER 1000:1000
+WORKDIR /home/mcp
+ENV HOME=/home/mcp
+ENTRYPOINT ["/usr/local/bin/mcp-vmanomaly"]
