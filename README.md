@@ -453,6 +453,32 @@ MCP vmanomaly provides tools organized into categories:
 | `vmanomaly_get_server_queries` | Get configured server query aliases and expressions     |
 | `vmanomaly_get_metrics`        | Get vmanomaly server metrics in Prometheus format       |
 
+#### Deployment sizing (3 tools)
+
+Currently experimental as of vmanomaly v1.31.0; requires a server exposing the deployment-sizing API. Earlier targets are unsupported; an omitted target uses the installed server version. Report any version fallback returned by the server without claiming validation on the requested release. Deployment sizing estimates resources for vmanomaly itself, rather than forecasting a monitored metric with `forecast_at`.
+
+| Tool | Purpose |
+|------|---------|
+| `vmanomaly_estimate_deployment_resources` | Deployment CPU/RAM/disk and composable stage estimates |
+| `vmanomaly_estimate_inference_capacity` | Approximate active models per inference interval at fixed CPUs, optionally RAM constrained |
+| `vmanomaly_get_deployment_sizing_profiles` | Discover supported sizing profiles and their model parameters |
+
+Forward sizing accepts `workloads`, each with `model_class`, `entity_count` and `infer_every_seconds`. Reverse sizing needs `model_class`, `cpus` and `infer_every_seconds`; `ram_limit_bytes` is optional. Each accepts an `options` object for the corresponding backend fields, with workload-specific options nested in each workload. For example:
+
+```json
+{"model_class":"mad_online","cpus":2,"infer_every_seconds":300,"ram_limit_bytes":2147483648,"options":{"vmanomaly_version":"v1.31.0","infer_points_per_cycle":2}}
+```
+
+Choose the flow by the unknown: a known series count needs forward sizing; fixed CPU/RAM and cadence with no count needs reverse sizing, even if the user simply asks for "capacity". Do not request cardinality for reverse sizing. The output is active model/entity count: univariate entities are series, multivariate entities are groups. Supply `topology` and `channels_per_entity` for multivariate requests and report `input_series` separately. Missing history can be clarified or explicitly defaulted. Compare `memory` and `disk` with otherwise identical inputs. In reverse sizing, an explicit numeric `history.step_seconds` defaults the scored batch to `ceil(infer_every_seconds / step_seconds)` unless `infer_points_per_cycle` is supplied. MCP reports this non-overlapping-cycle assumption alongside successful and failed sizing results.
+
+For online models, forward sizing automatically treats fit duration as advisory against inference cadence; fit peak RAM/disk still count. Provide history window/step and omit `fit_every_seconds` unless the user requests periodic refits. Never infer refit cadence from `fit_window`. `mad`/`mad_online` and `zscore`/`zscore_online` resolve to the same online classes. An explicit finite interval includes recurring compute. Batch models keep hard fit deadlines and default to daily fitting. Use explicit `options.deployment.members_count` and `split_by=queries` for a fixed query-shard layout.
+
+Results preserve resolved inputs, stage costs, resource constraints and operational warnings, with a single experimental-estimate notice. Internal calibration diagnostics are omitted from forward/reverse tool results; profile discovery is returned unchanged. Reverse sizing covers inference only, excluding bootstrap/refits/churn. Check the model schema or profile before supplying required parameters; do not invent them. Unsupported seasonal configurations require a matching profile or offline calibration, rather than fewer series or a different cadence.
+
+Requests use the existing authenticated backend client, fixed routes, bounded request bodies and a bounded cancelable queue. The request timeout includes waiting, and profile discovery remains independent. Backend validation and overload errors are returned as tool errors without automatic retries; the session can accept a corrected follow-up. Older servers may not expose these routes. These tools do not change a running deployment.
+
+Forward sizing resolves omitted scored points from explicit sampling and cadence, and defaults the inference deadline to the shortest workload cadence. Explicit overrides are preserved. An infeasible explicit deployment returns binding constraints; the adapter does not retry or substitute a balanced repartition. Compare CPU candidates in one call, and keep nominal versus margin-adjusted times distinct.
+
 #### Model Configuration (4 tools)
 
 | Tool                              | Description                                             |
