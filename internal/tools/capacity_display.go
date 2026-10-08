@@ -45,6 +45,14 @@ func capacityDisplay(data []byte) []byte {
 				note, ok := value.(string)
 				if ok {
 					lower := strings.ToLower(note)
+					if strings.Contains(lower, "larger peer pools use an unvalidated") {
+						continue
+					}
+					if strings.Contains(lower, "experimental peer estimate") {
+						// Keep operational shape limits, not calibration mechanics.
+						note, _, _ = strings.Cut(note, " Worker speedup")
+						value = note
+					}
 					if strings.Contains(lower, "extrapolat") || strings.Contains(lower, "amdahl") || strings.Contains(lower, "benchmark model work") || strings.Contains(lower, "cache misses run bounded calibration") {
 						continue
 					}
@@ -55,6 +63,19 @@ func capacityDisplay(data []byte) []byte {
 		}
 	}
 	result["estimate_notice"] = "Experimental estimate; validate with a representative workload."
+	if resolved, ok := result["resolved_request"].(map[string]any); ok {
+		peer := resolved["topology"] == "wide"
+		if rows, ok := resolved["workloads"].([]any); ok {
+			for _, value := range rows {
+				if row, ok := value.(map[string]any); ok && row["topology"] == "wide" {
+					peer = true
+				}
+			}
+		}
+		if peer {
+			result["estimate_notice"] = "Rough peer-group estimate; allow extra headroom and validate with your workload."
+		}
+	}
 	output, err := json.Marshal(result)
 	if err != nil {
 		return data

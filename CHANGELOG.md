@@ -7,7 +7,7 @@ published as the corresponding GitHub release notes.
 
 ### Features
 
-- Describe experimental peer-pool sizing on supporting servers, distinguishing pool/model counts from peer-series counts and preserving fixed-population limitations.
+- Support rough peer-pool sizing guidance, including larger pools, with a concise estimate disclaimer; distinguish pool/model counts from peer-series counts and preserve fixed-population limitations.
 
 - Add experimental deployment-resource, inference-capacity and profile-discovery tools for vmanomaly v1.31.0+.
 - Preserve explicit workload/sharding constraints, distinguish online bootstrap from periodic refits, and return recoverable sizing errors with concise operational results.

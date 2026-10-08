@@ -86,6 +86,23 @@ func TestCapacityRejectsAmbiguousOverrides(t *testing.T) {
 	}
 }
 
+func TestPeerCapacityNoticeIsConcise(t *testing.T) {
+	for _, shape := range []string{`{"topology":"wide"}`, `{"workloads":[{"topology":"wide"}]}`} {
+		data := []byte(`{"resolved_request":` + shape + `,"warnings":["Workload: experimental peer estimate for fixed equal-size pools. Worker speedup uses the shared runtime fallback.","Workload: larger peer pools use an unvalidated n log(n) CPU approximation.","Datasource download time is not measured."]}`)
+		var result map[string]any
+		if err := json.Unmarshal(capacityDisplay(data), &result); err != nil {
+			t.Fatal(err)
+		}
+		if result["estimate_notice"] != "Rough peer-group estimate; allow extra headroom and validate with your workload." {
+			t.Fatalf("missing peer notice: %v", result)
+		}
+		warnings := fmt.Sprint(result["warnings"])
+		if strings.Contains(warnings, "n log(n)") || strings.Contains(warnings, "Worker speedup") || !strings.Contains(warnings, "fixed equal-size pools") || !strings.Contains(warnings, "Datasource download") {
+			t.Fatalf("wrong warning filtering: %s", warnings)
+		}
+	}
+}
+
 func TestPeerCapacityPreservesPoolShapeAndLimitations(t *testing.T) {
 	for _, operation := range []string{"estimate", "throughput"} {
 		t.Run(operation, func(t *testing.T) {
@@ -97,30 +114,30 @@ func TestPeerCapacityPreservesPoolShapeAndLimitations(t *testing.T) {
 				workload := body
 				if operation == "estimate" {
 					workload = body["workloads"].([]any)[0].(map[string]any)
-					if workload["entity_count"] != float64(2) {
+					if workload["entity_count"] != float64(100) {
 						t.Errorf("pool count changed: %v", workload)
 					}
 				}
-				if workload["model_class"] != "peer_outlier" || workload["topology"] != "wide" || workload["channels_per_entity"] != float64(5) {
+				if workload["model_class"] != "peer_outlier" || workload["topology"] != "wide" || workload["channels_per_entity"] != float64(100) {
 					t.Errorf("peer shape lost: %v", workload)
 				}
-				_, _ = w.Write([]byte(`{"experimental":true,"input_series":10,"warnings":["Experimental peer estimate: fixed equal-size pools, no membership churn; serial model CPU."]}`))
+				_, _ = w.Write([]byte(`{"experimental":true,"input_series":10000,"warnings":["Experimental peer estimate: fixed equal-size pools, no membership churn; shared fallback worker scaling."]}`))
 			}))
 			defer server.Close()
 			client := vmanomaly.NewClient(server.URL, "", nil)
-			options := map[string]any{"topology": "wide", "channels_per_entity": 5}
+			options := map[string]any{"topology": "wide", "channels_per_entity": 100}
 			args := map[string]any{"model_class": "peer_outlier", "cpus": 2, "infer_every_seconds": 300, "options": options}
 			handler := handleCapacityThroughput(client)
 			if operation == "estimate" {
 				handler = handleCapacityEstimate(client)
-				args = map[string]any{"workloads": []any{map[string]any{"model_class": "peer_outlier", "entity_count": 2, "infer_every_seconds": 300, "options": options}}}
+				args = map[string]any{"workloads": []any{map[string]any{"model_class": "peer_outlier", "entity_count": 100, "infer_every_seconds": 300, "options": options}}}
 			}
 			result, err := handler(context.Background(), capacityCall(args))
 			if err != nil || result.IsError {
 				t.Fatalf("unexpected result: %v %v", result, err)
 			}
 			text := result.Content[0].(mcp.TextContent).Text
-			if !strings.Contains(text, "fixed equal-size pools") || !strings.Contains(text, "serial model CPU") || !strings.Contains(text, `"input_series":10`) {
+			if !strings.Contains(text, "fixed equal-size pools") || !strings.Contains(text, "shared fallback worker scaling") || !strings.Contains(text, `"input_series":10000`) {
 				t.Fatalf("peer limitations or counts lost: %s", text)
 			}
 		})
