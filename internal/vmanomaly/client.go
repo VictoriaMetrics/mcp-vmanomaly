@@ -17,6 +17,9 @@ type Client struct {
 	httpClient    *http.Client
 	bearerToken   string
 	customHeaders map[string]string
+	capacitySlot  chan struct{}
+	capacityQueue chan struct{}
+	capacityNext  time.Time // protected by capacitySlot
 }
 
 func NewClient(baseURL, bearerToken string, customHeaders map[string]string) *Client {
@@ -28,6 +31,8 @@ func NewClientWithTimeout(baseURL, bearerToken string, customHeaders map[string]
 		baseURL:       baseURL,
 		bearerToken:   bearerToken,
 		customHeaders: customHeaders,
+		capacitySlot:  make(chan struct{}, 1),
+		capacityQueue: make(chan struct{}, 8),
 		httpClient: &http.Client{
 			Timeout: requestTimeout,
 		},

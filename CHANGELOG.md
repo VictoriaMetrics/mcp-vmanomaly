@@ -3,6 +3,13 @@
 Notable changes to `mcp-vmanomaly` are documented in this file. Release sections are also
 published as the corresponding GitHub release notes.
 
+## [Unreleased]
+
+### Features
+
+- Add experimental deployment-resource, inference-capacity and profile-discovery tools for vmanomaly v1.31.0+.
+- Preserve explicit workload/sharding constraints, distinguish online bootstrap from periodic refits, and return recoverable sizing errors with concise operational results.
+
 ## [v0.4.2] - 2026-09-24
 
 ### Improvements
