@@ -3,8 +3,12 @@ package tools
 import (
 	"bytes"
 	"encoding/json"
+	"regexp"
 	"strings"
 )
+
+// Remove only the calibration sentence, preserving later operational limits.
+var peerWorkerSentence = regexp.MustCompile(`(?i)\bworker speedup\b[^.!?]*(?:[.!?]|$)`)
 
 // Keep the MCP sizing response operational. The backend API retains calibration
 // diagnostics; exposing them here encourages verbose, misleading sizing prose.
@@ -50,8 +54,9 @@ func capacityDisplay(data []byte) []byte {
 					}
 					if strings.Contains(lower, "experimental peer estimate") {
 						// Keep operational shape limits, not calibration mechanics.
-						note, _, _ = strings.Cut(note, " Worker speedup")
+						note = strings.TrimSpace(peerWorkerSentence.ReplaceAllString(note, ""))
 						value = note
+						lower = strings.ToLower(note)
 					}
 					if strings.Contains(lower, "extrapolat") || strings.Contains(lower, "amdahl") || strings.Contains(lower, "benchmark model work") || strings.Contains(lower, "cache misses run bounded calibration") {
 						continue

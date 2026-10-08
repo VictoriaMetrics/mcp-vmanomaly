@@ -12,12 +12,53 @@ import (
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
 
 func capacityCall(arguments map[string]any) mcp.CallToolRequest {
 	var request mcp.CallToolRequest
 	request.Params.Arguments = arguments
 	return request
+}
+
+func TestPeerCapacityGuidanceMatchesToolShape(t *testing.T) {
+	s := server.NewMCPServer("test", "1")
+	RegisterCapacityTools(s, vmanomaly.NewClient("http://invalid", "", nil))
+	forward := s.GetTool("vmanomaly_estimate_deployment_resources").Tool.Description
+	reverse := s.GetTool("vmanomaly_estimate_inference_capacity").Tool.Description
+	for _, description := range []string{forward, reverse} {
+		if !strings.Contains(description, "estimate_notice when present; otherwise") || !strings.Contains(description, "estimate_notice replaces the generic caveat: present exactly one disclaimer, not both") {
+			t.Fatalf("ambiguous cumulative disclaimer guidance: %s", description)
+		}
+	}
+	if !strings.Contains(forward, "one query per workload") || strings.Contains(forward, "REVERSE peer sizing:") {
+		t.Fatalf("wrong forward peer guidance: %s", forward)
+	}
+	if strings.Contains(reverse, "one query per workload") || strings.Contains(reverse, "separate workloads") || !strings.Contains(reverse, "not entity_count or workloads") {
+		t.Fatalf("wrong reverse peer guidance: %s", reverse)
+	}
+}
+
+func TestPeerWarningKeepsLimitsAfterCalibrationSentence(t *testing.T) {
+	for _, note := range []string{
+		"Experimental peer estimate. worker speedup uses shared fallback. No churn retention.",
+		"WORKER SPEEDUP: shared fallback. Experimental peer estimate. No churn retention.",
+		"É: experimental peer estimate. WoRkEr SpEeDuP uses an extrapolated curve. No churn retention.",
+		"Experimental peer estimate. No churn retention. Worker speedup uses shared fallback",
+	} {
+		data, err := json.Marshal(map[string]any{"warnings": []string{note}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var result map[string]any
+		if err := json.Unmarshal(capacityDisplay(data), &result); err != nil {
+			t.Fatal(err)
+		}
+		warnings := strings.ToLower(fmt.Sprint(result["warnings"]))
+		if strings.Contains(warnings, "worker speedup") || !strings.Contains(warnings, "experimental peer estimate") || !strings.Contains(warnings, "no churn retention") {
+			t.Fatalf("wrong filtering for %q: %s", note, warnings)
+		}
+	}
 }
 
 func TestCapacityForwardAndReverse(t *testing.T) {
