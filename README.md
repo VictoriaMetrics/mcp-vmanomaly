@@ -455,6 +455,8 @@ MCP vmanomaly provides tools organized into categories:
 
 #### Deployment sizing (3 tools)
 
+Peer-pool sizing is experimental and requires backend support: use `model_class: peer_outlier`, `options.topology: wide` and `options.channels_per_entity` for peers per pool. Forward `entity_count` counts pools; reverse capacity counts pool-models, with peer-series count returned separately. For example, two five-peer pools are two entities and ten input series. Initial support is limited to equal-size fixed pools (3–64 peers, meeting `min_peer_count`, default 5), complete observations, one query per workload and no churn retention. Omit `model_params.groupby`; declare separate forward workloads for distinct queries or pool sizes. Do not average unequal pools or replace an unsupported peer estimate with univariate sizing. No peer profile is initially shipped; bounded live calibration requires the installed backend version. Estimates retain serial model-CPU assumptions and need representative validation.
+
 Currently experimental as of vmanomaly v1.31.0; requires a server exposing the deployment-sizing API. Earlier targets are unsupported; an omitted target uses the installed server version. Report any version fallback returned by the server without claiming validation on the requested release. Deployment sizing estimates resources for vmanomaly itself, rather than forecasting a monitored metric with `forecast_at`.
 
 | Tool | Purpose |

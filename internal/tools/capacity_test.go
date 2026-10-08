@@ -86,6 +86,47 @@ func TestCapacityRejectsAmbiguousOverrides(t *testing.T) {
 	}
 }
 
+func TestPeerCapacityPreservesPoolShapeAndLimitations(t *testing.T) {
+	for _, operation := range []string{"estimate", "throughput"} {
+		t.Run(operation, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Fatal(err)
+				}
+				workload := body
+				if operation == "estimate" {
+					workload = body["workloads"].([]any)[0].(map[string]any)
+					if workload["entity_count"] != float64(2) {
+						t.Errorf("pool count changed: %v", workload)
+					}
+				}
+				if workload["model_class"] != "peer_outlier" || workload["topology"] != "wide" || workload["channels_per_entity"] != float64(5) {
+					t.Errorf("peer shape lost: %v", workload)
+				}
+				_, _ = w.Write([]byte(`{"experimental":true,"input_series":10,"warnings":["Experimental peer estimate: fixed equal-size pools, no membership churn; serial model CPU."]}`))
+			}))
+			defer server.Close()
+			client := vmanomaly.NewClient(server.URL, "", nil)
+			options := map[string]any{"topology": "wide", "channels_per_entity": 5}
+			args := map[string]any{"model_class": "peer_outlier", "cpus": 2, "infer_every_seconds": 300, "options": options}
+			handler := handleCapacityThroughput(client)
+			if operation == "estimate" {
+				handler = handleCapacityEstimate(client)
+				args = map[string]any{"workloads": []any{map[string]any{"model_class": "peer_outlier", "entity_count": 2, "infer_every_seconds": 300, "options": options}}}
+			}
+			result, err := handler(context.Background(), capacityCall(args))
+			if err != nil || result.IsError {
+				t.Fatalf("unexpected result: %v %v", result, err)
+			}
+			text := result.Content[0].(mcp.TextContent).Text
+			if !strings.Contains(text, "fixed equal-size pools") || !strings.Contains(text, "serial model CPU") || !strings.Contains(text, `"input_series":10`) {
+				t.Fatalf("peer limitations or counts lost: %s", text)
+			}
+		})
+	}
+}
+
 func TestCapacityServerErrorsAreNotRetried(t *testing.T) {
 	for _, status := range []int{404, 422, 429} {
 		calls := 0
