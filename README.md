@@ -30,7 +30,8 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+ for the core MCP toolset
   - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
-- Go 1.26.8 or higher (if building from source)
+  - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for experimental peer-group tuning and deployment sizing
+- Go 1.26.9 or higher (if building from source)
 
 ## Installation
 
@@ -455,6 +456,8 @@ MCP vmanomaly provides tools organized into categories:
 
 #### Deployment sizing (3 tools)
 
+Peer-pool sizing is experimental and requires backend support: use `model_class: peer_outlier`, `options.topology: wide` and `options.channels_per_entity` for peers per pool. Forward `entity_count` counts pools; reverse capacity counts pool-models, with peer-series count returned separately. For example, two five-peer pools are two entities and ten input series. Initial support is limited to equal-size fixed pools (3–10,000 peers, meeting `min_peer_count`, default 5), complete observations, one query per workload and no churn retention. Omit `model_params.groupby`; declare separate forward workloads for distinct queries or pool sizes. Do not average unequal pools or replace an unsupported peer estimate with univariate sizing. No peer profile is initially shipped; bounded live calibration requires the installed backend version. Pool widths above 64 use bounded-sample n log(n) CPU and linear memory/output approximations. Shared fallback worker coefficients are not peer-specific measurements. Keep the user's requested pool width; never substitute a smaller pool. Estimates need representative validation.
+
 Currently experimental as of vmanomaly v1.31.0; requires a server exposing the deployment-sizing API. Earlier targets are unsupported; an omitted target uses the installed server version. Report any version fallback returned by the server without claiming validation on the requested release. Deployment sizing estimates resources for vmanomaly itself, rather than forecasting a monitored metric with `forecast_at`.
 
 | Tool | Purpose |
@@ -528,9 +531,11 @@ Forward sizing resolves omitted scored points from explicit sampling and cadence
 `vmanomaly_get_autotune_task` until `status` is `done`, then use the recommendation under
 `result_data`. Treat `error` and `canceled` as terminal statuses.
 
-The list/schema endpoints intentionally expose only models supported by VMUI. Outside VMUI,
-documented multivariate aliases such as `temporal_envelope_multivariate` can still be shared-autotuned
-and validated as complete model configurations. Do not recommend multivariate models in VMUI.
+The running server's list/schema endpoints expose UI-compatible models, not an exhaustive catalog of every deployable model. Their contents depend on the server version; servers supporting the corresponding investigation views can include multivariate and peer-group models. Check the returned list and schema rather than assuming those models are always present or always excluded.
+
+For multivariate detection, tune the multivariate class directly with aligned named queries and any `frozen_params.groupby` labels; the result uses a joint anomaly score. Documented models not exposed by an older server's UI endpoints may still support server-side tuning and complete configuration validation; verify that server's capabilities before using them or suggesting them in VMUI.
+
+With vmanomaly 1.31.0+, shared tuning accepts `peer_outlier`. Keep entity labels in query results and supply population grouping in `frozen_params.groupby`; queries remain separate populations. Stable query policies remain authoritative. The tuning result is a concrete model configuration: deployment sizing can estimate that model's fit/inference resources, not the `auto` wrapper's search cost. Supervised marking is available in VMUI; the current MCP tuning tool exposes the unsupervised objective, not label submission.
 
 For new configurations, prefer online models. Prophet, Holt-Winters, and Isolation Forest remain
 supported for existing deployments but are planned for future deprecation; use Temporal Envelope as

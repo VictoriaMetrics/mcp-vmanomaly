@@ -5,7 +5,13 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Security
+
+- Update the Go build toolchain to 1.26.9 to address standard-library vulnerabilities reported by `govulncheck`.
+
 ### Features
+
+- Support rough peer-pool sizing guidance, including larger pools, with a concise estimate disclaimer; distinguish pool/model counts from peer-series counts and preserve fixed-population limitations.
 
 - Add experimental deployment-resource, inference-capacity and profile-discovery tools for vmanomaly v1.31.0+.
 - Preserve explicit workload/sharding constraints, distinguish online bootstrap from periodic refits, and return recoverable sizing errors with concise operational results.
