@@ -30,7 +30,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+ for the core MCP toolset
   - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
-  - version 1.31.0+ for experimental peer-group tuning and deployment sizing
+  - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for experimental peer-group tuning and deployment sizing
 - Go 1.26.9 or higher (if building from source)
 
 ## Installation
@@ -531,7 +531,9 @@ Forward sizing resolves omitted scored points from explicit sampling and cadence
 `vmanomaly_get_autotune_task` until `status` is `done`, then use the recommendation under
 `result_data`. Treat `error` and `canceled` as terminal statuses.
 
-Use the running server's list/schema endpoints to discover available models and UI support. Compatible servers expose multivariate and peer-group investigation; do not assume every server supports the same model set.
+The running server's list/schema endpoints expose UI-compatible models, not an exhaustive catalog of every deployable model. Their contents depend on the server version; servers supporting the corresponding investigation views can include multivariate and peer-group models. Check the returned list and schema rather than assuming those models are always present or always excluded.
+
+For multivariate detection, tune the multivariate class directly with aligned named queries and any `frozen_params.groupby` labels; the result uses a joint anomaly score. Documented models not exposed by an older server's UI endpoints may still support server-side tuning and complete configuration validation; verify that server's capabilities before using them or suggesting them in VMUI.
 
 With vmanomaly 1.31.0+, shared tuning accepts `peer_outlier`. Keep entity labels in query results and supply population grouping in `frozen_params.groupby`; queries remain separate populations. Stable query policies remain authoritative. The tuning result is a concrete model configuration: deployment sizing can estimate that model's fit/inference resources, not the `auto` wrapper's search cost. Supervised marking is available in VMUI; the current MCP tuning tool exposes the unsupervised objective, not label submission.
 
