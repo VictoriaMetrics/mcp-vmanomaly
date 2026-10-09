@@ -30,6 +30,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+ for the core MCP toolset
   - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
+  - version 1.31.0+ for experimental peer-group tuning and deployment sizing
 - Go 1.26.8 or higher (if building from source)
 
 ## Installation
@@ -530,9 +531,9 @@ Forward sizing resolves omitted scored points from explicit sampling and cadence
 `vmanomaly_get_autotune_task` until `status` is `done`, then use the recommendation under
 `result_data`. Treat `error` and `canceled` as terminal statuses.
 
-The list/schema endpoints intentionally expose only models supported by VMUI. Outside VMUI,
-documented multivariate aliases such as `temporal_envelope_multivariate` can still be shared-autotuned
-and validated as complete model configurations. Do not recommend multivariate models in VMUI.
+Use the running server's list/schema endpoints to discover available models and UI support. Compatible servers expose multivariate and peer-group investigation; do not assume every server supports the same model set.
+
+With vmanomaly 1.31.0+, shared tuning accepts `peer_outlier`. Keep entity labels in query results and supply population grouping in `frozen_params.groupby`; queries remain separate populations. Stable query policies remain authoritative. The tuning result is a concrete model configuration: deployment sizing can estimate that model's fit/inference resources, not the `auto` wrapper's search cost. Supervised marking is available in VMUI; the current MCP tuning tool exposes the unsupervised objective, not label submission.
 
 For new configurations, prefer online models. Prophet, Holt-Winters, and Isolation Forest remain
 supported for existing deployments but are planned for future deprecation; use Temporal Envelope as
