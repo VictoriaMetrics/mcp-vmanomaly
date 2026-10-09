@@ -5,16 +5,22 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
-### Security
-
-- Update the Go build toolchain to 1.26.9 to address standard-library vulnerabilities reported by `govulncheck`.
+## [v0.5.0] - 2026-10-09
 
 ### Features
 
-- Support rough peer-pool sizing guidance, including larger pools, with a concise estimate disclaimer; distinguish pool/model counts from peer-series counts and preserve fixed-population limitations.
+- Added deployment-resource, inference-capacity and profile-discovery tools for [vmanomaly v1.31.0+](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).
+- Added rough sizing estimates for fixed, equal-size peer groups, including larger populations, with clear estimate limitations and distinct pool and peer-series counts.
+- Preserved workload and sharding constraints, distinguished online bootstrap from periodic refits, and returned recoverable sizing errors with concise operational results.
 
-- Add experimental deployment-resource, inference-capacity and profile-discovery tools for vmanomaly v1.31.0+.
-- Preserve explicit workload/sharding constraints, distinguish online bootstrap from periodic refits, and return recoverable sizing errors with concise operational results.
+### Improvements
+
+- Refreshed embedded documentation for [vmanomaly v1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310) and UI v1.10.0, including peer-group models, deployment sizing, and supervised and unsupervised tuning.
+- Updated the integration environment to vmanomaly v1.31.0.
+
+### Security
+
+- Updated the Go build toolchain to 1.26.9 to address standard-library vulnerabilities reported by `govulncheck`.
 
 ## [v0.4.2] - 2026-09-24
 
@@ -162,6 +168,7 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.5.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.2...v0.5.0
 [v0.4.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.0...v0.4.1
 [v0.3.4]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.3...v0.3.4
