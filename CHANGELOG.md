@@ -5,6 +5,10 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Security
+
+- Update the Go build toolchain to 1.26.9 to address standard-library vulnerabilities reported by `govulncheck`.
+
 ### Features
 
 - Support rough peer-pool sizing guidance, including larger pools, with a concise estimate disclaimer; distinguish pool/model counts from peer-series counts and preserve fixed-population limitations.
