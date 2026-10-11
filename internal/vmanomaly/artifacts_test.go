@@ -23,7 +23,9 @@ func TestArtifactRequestPreservesMappingsAndZeroPersistence(t *testing.T) {
 		if len(input["config"].(map[string]any)["models"].(map[string]any)) != 2 {
 			t.Error("lost mappings")
 		}
-		w.Write([]byte(`{"schema_version":1,"validation":"schema-valid","warnings":["not live-tested"]}`))
+		if _, err := w.Write([]byte(`{"schema_version":1,"validation":"schema-valid","warnings":["not live-tested"]}`)); err != nil {
+			t.Error(err)
+		}
 	}))
 	defer server.Close()
 	zero := 0

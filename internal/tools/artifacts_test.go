@@ -15,7 +15,9 @@ func TestArtifactToolPreservesStructuredResultAndErrors(t *testing.T) {
 	status := http.StatusOK
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
-		w.Write([]byte(`{"schema_version":1,"validation":"schema-valid","warnings":["not live-tested"]}`))
+		if _, err := w.Write([]byte(`{"schema_version":1,"validation":"schema-valid","warnings":["not live-tested"]}`)); err != nil {
+			t.Error(err)
+		}
 	}))
 	defer upstream.Close()
 	s := server.NewMCPServer("test", "1")
