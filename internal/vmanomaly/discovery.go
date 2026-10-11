@@ -10,13 +10,13 @@ import (
 
 // DiscoveryRequest scopes one metadata request; it does not query historical samples.
 type DiscoveryRequest struct {
-	Operation       string   `json:"operation" jsonschema:"enum=metric_names,enum=label_names,enum=label_values,enum=series"`
-	DatasourceURL   string   `json:"datasource_url"`
+	Operation       string   `json:"operation" jsonschema:"required,enum=metric_names,enum=label_names,enum=label_values,enum=series"`
+	DatasourceURL   string   `json:"datasource_url" jsonschema:"required"`
 	TenantID        string   `json:"tenant_id,omitempty"`
-	Match           []string `json:"match" jsonschema:"minItems=1,maxItems=10"`
-	Start           float64  `json:"start"`
-	End             float64  `json:"end"`
-	Label           string   `json:"label,omitempty"`
+	Match           []string `json:"match" jsonschema:"required,minItems=1,maxItems=10"`
+	Start           float64  `json:"start" jsonschema:"required"`
+	End             float64  `json:"end" jsonschema:"required"`
+	Label           string   `json:"label,omitempty" jsonschema:"description=Required for label_values"`
 	Limit           int      `json:"limit,omitempty" jsonschema:"minimum=1,maximum=1000"`
 	TimeoutSeconds  float64  `json:"timeout_seconds,omitempty"`
 	PassAuthHeaders bool     `json:"pass_auth_headers,omitempty"`
@@ -30,6 +30,9 @@ func (c *Client) Discover(ctx context.Context, request DiscoveryRequest) (json.R
 	}
 	if len(request.Match) < 1 || len(request.Match) > 10 || request.End <= request.Start || request.End-request.Start > 31*86400 || request.Limit < 0 || request.Limit > 1000 {
 		return nil, fmt.Errorf("invalid discovery scope or budget")
+	}
+	if request.Operation == "label_values" && strings.TrimSpace(request.Label) == "" {
+		return nil, fmt.Errorf("label_values requires a nonblank label")
 	}
 	for _, selector := range request.Match {
 		if strings.TrimSpace(selector) == "" || len(selector) > 4096 {
