@@ -40,7 +40,7 @@ type ValidateConfigArgs struct {
 func RegisterConfigTools(s *server.MCPServer, client *vmanomaly.Client) {
 	validateConfigTool := mcp.NewTool(
 		"vmanomaly_validate_config",
-		mcp.WithDescription("Validate a complete vmanomaly YAML configuration. Takes a full configuration object (with reader, schedulers, models, writer sections) and returns validation result with normalized config or error details. Use this to verify a complete config before deployment."),
+		mcp.WithDescription("Validate the schema of a complete vmanomaly YAML configuration. Takes a full configuration object (with reader, schedulers, models, writer sections) and returns validation result with normalized config or error details. Schema validation does not establish deployment readiness; perform separate deployment rendering and live checks."),
 		mcp.WithInputSchema[ValidateConfigArgs](),
 	)
 	s.AddTool(validateConfigTool, mcp.NewTypedToolHandler(handleValidateConfig(client)))
