@@ -27,6 +27,7 @@ func RegisterTools(s *server.MCPServer, client *vmanomaly.Client) {
 	RegisterConfigTools(s, client)
 	RegisterInfoTools(s, client)
 	RegisterCapacityTools(s, client)
+	RegisterDiscoveryTools(s, client)
 	RegisterCompatibilityTools(s, client)
 	RegisterAlertTools(s, client)
 	RegisterAnalysisTools(s, client)
