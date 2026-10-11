@@ -29,7 +29,7 @@ type GenerateConfigArgs struct {
 
 // ValidateConfigArgs defines arguments for validate_config tool
 type ValidateConfigArgs struct {
-	Config map[string]any `json:"config" jsonschema:"required,description=Complete vmanomaly configuration object to validate. Must include all required sections: 'reader' (data source) 'scheduler' (timing) 'model' (detection algorithm) and 'writer' (output destination). Returns normalized config with defaults applied or validation errors with specific issues."`
+	Config map[string]any `json:"config" jsonschema:"required,description=Complete vmanomaly configuration object to validate. Must include all required sections: 'reader' (data source) 'schedulers' (timing) 'models' (detection algorithms) and 'writer' (output destination). Returns normalized config with defaults applied or validation errors with specific issues."`
 }
 
 // ============================================================================
@@ -40,7 +40,7 @@ type ValidateConfigArgs struct {
 func RegisterConfigTools(s *server.MCPServer, client *vmanomaly.Client) {
 	validateConfigTool := mcp.NewTool(
 		"vmanomaly_validate_config",
-		mcp.WithDescription("Validate a complete vmanomaly YAML configuration. Takes a full configuration object (with reader, scheduler, model, writer sections) and returns validation result with normalized config or error details. Use this to verify a complete config before deployment."),
+		mcp.WithDescription("Validate a complete vmanomaly YAML configuration. Takes a full configuration object (with reader, schedulers, models, writer sections) and returns validation result with normalized config or error details. Use this to verify a complete config before deployment."),
 		mcp.WithInputSchema[ValidateConfigArgs](),
 	)
 	s.AddTool(validateConfigTool, mcp.NewTypedToolHandler(handleValidateConfig(client)))
@@ -68,7 +68,7 @@ func handleValidateConfig(client *vmanomaly.Client) func(ctx context.Context, re
 		// Add helpful message
 		resultMsg := fmt.Sprintf("Validation Result:\n%s\n\n", string(responseJSON))
 		if validation.IsValid {
-			resultMsg += "Configuration is valid and ready to use!"
+			resultMsg += "Configuration is schema-valid. Connectivity, data, resources and deployment have not been tested."
 		} else {
 			resultMsg += "Configuration is invalid. Check the errors above."
 		}
