@@ -447,7 +447,7 @@ MCP vmanomaly provides tools organized into categories:
 
 #### Bounded metric discovery
 
-`vmanomaly_discover_metrics` calls the additive `POST /api/v1/discovery` API. It is not part of the vmanomaly 1.31.0 baseline: check the installed endpoint, and treat 404 as unsupported. Supply a datasource, optional explicit tenant, selectors and a fixed window. Each call performs one metadata request; no historical samples, retries or tenant enumeration. Defaults are 100 results and 10 seconds; maxima are 1,000 results, 10 selectors, 31 days and 30 seconds. The service also caps response bytes and concurrent requests. These caps do not bound the TSDB index scan. Preserve upstream warnings and `completeness`; returned counts are neither total cardinality nor exact historical coverage.
+`vmanomaly_discover_metrics` calls the additive `POST /api/v1/discovery` API. It is not part of the vmanomaly 1.31.0 baseline: check the installed endpoint, and treat 404 as unsupported. Supply a datasource, optional explicit tenant, selectors and a fixed window. Each call performs one metadata request; no historical samples, retries or tenant enumeration. Defaults are 100 results and 10 seconds; maxima are 1,000 results, 10 selectors, 31 days and 30 seconds. The MCP client caps response bytes but does not limit concurrent discovery calls; server-side admission limits depend on the deployed backend. These caps do not bound the TSDB index scan. Preserve upstream warnings and `completeness`; returned counts are neither total cardinality nor exact historical coverage.
 
 #### Health & Info (4 tools)
 
