@@ -15,7 +15,9 @@ func TestDiscoveryToolPreservesStructuredResultAndErrors(t *testing.T) {
 	status := http.StatusOK
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
-		w.Write([]byte(`{"items":[],"completeness":"unknown","warnings":["limited"]}`))
+		if _, err := w.Write([]byte(`{"items":[],"completeness":"unknown","warnings":["limited"]}`)); err != nil {
+			t.Error(err)
+		}
 	}))
 	defer upstream.Close()
 	s := server.NewMCPServer("test", "1")
