@@ -20,7 +20,9 @@ func TestDiscoveryScopeAndWarnings(t *testing.T) {
 		if len(req.Match) != 2 || req.TenantID != "42:3" || req.Limit != 10 {
 			t.Error("lost scope")
 		}
-		w.Write([]byte(`{"completeness":"unknown","items":[],"warnings":["partial"]}`))
+		if _, err := w.Write([]byte(`{"completeness":"unknown","items":[],"warnings":["partial"]}`)); err != nil {
+			t.Error(err)
+		}
 	}))
 	defer server.Close()
 	result, err := NewClient(server.URL+"/prefix", "fixture", nil).Discover(context.Background(), DiscoveryRequest{Operation: "metric_names", DatasourceURL: "https://vm.example", TenantID: "42:3", Match: []string{"a", "b"}, Start: 1, End: 100, Limit: 10})
@@ -28,7 +30,9 @@ func TestDiscoveryScopeAndWarnings(t *testing.T) {
 		t.Fatalf("%s %v", result, err)
 	}
 	var got map[string]any
-	json.Unmarshal(result, &got)
+	if err := json.Unmarshal(result, &got); err != nil {
+		t.Fatal(err)
+	}
 	if got["completeness"] != "unknown" {
 		t.Fatal("lost completeness")
 	}
