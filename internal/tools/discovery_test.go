@@ -3,20 +3,31 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"slices"
+	"strings"
+	"sync/atomic"
+	"testing"
+
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"net/http"
-	"net/http/httptest"
-	"slices"
-	"sync/atomic"
-	"testing"
 )
 
 func TestDiscoveryToolPreservesStructuredResultAndErrors(t *testing.T) {
+	want := vmanomaly.DiscoveryRequest{Operation: "label_values", DatasourceURL: "https://vm.example", TenantID: "42:3", Match: []string{"up"}, Start: 1.5, End: 2.5, Label: "job", Limit: 5, TimeoutSeconds: 7, PassAuthHeaders: true}
 	var status atomic.Int32
 	status.Store(http.StatusOK)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var got vmanomaly.DiscoveryRequest
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Error(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("request mapping changed: %+v", got)
+		}
 		w.WriteHeader(int(status.Load()))
 		if _, err := w.Write([]byte(`{"items":[],"completeness":"unknown","warnings":["limited"]}`)); err != nil {
 			t.Error(err)
@@ -31,7 +42,12 @@ func TestDiscoveryToolPreservesStructuredResultAndErrors(t *testing.T) {
 	}
 	var advertised struct {
 		InputSchema struct {
-			Required []string `json:"required"`
+			Required   []string `json:"required"`
+			Properties map[string]struct {
+				Description string   `json:"description"`
+				Minimum     *float64 `json:"minimum"`
+				Maximum     *float64 `json:"maximum"`
+			} `json:"properties"`
 		} `json:"inputSchema"`
 	}
 	metadata, err := json.Marshal(tool.Tool)
@@ -46,8 +62,20 @@ func TestDiscoveryToolPreservesStructuredResultAndErrors(t *testing.T) {
 			t.Errorf("missing required scope field: %s", field)
 		}
 	}
+	for _, field := range []string{"operation", "datasource_url", "tenant_id", "match", "start", "end", "label", "limit", "timeout_seconds", "pass_auth_headers"} {
+		if advertised.InputSchema.Properties[field].Description == "" {
+			t.Errorf("missing description for %s", field)
+		}
+	}
+	if !strings.Contains(advertised.InputSchema.Properties["tenant_id"].Description, "multitenant") {
+		t.Fatal("tenant schema does not explain multitenant scope")
+	}
+	timeoutSchema := advertised.InputSchema.Properties["timeout_seconds"]
+	if timeoutSchema.Minimum == nil || *timeoutSchema.Minimum != 0 || timeoutSchema.Maximum == nil || *timeoutSchema.Maximum != 30 {
+		t.Fatalf("unexpected timeout schema bounds: %+v", timeoutSchema)
+	}
 	var request mcp.CallToolRequest
-	request.Params.Arguments = map[string]any{"operation": "series", "match": []string{"up"}, "start": 1, "end": 2}
+	request.Params.Arguments = map[string]any{"operation": want.Operation, "datasource_url": want.DatasourceURL, "tenant_id": want.TenantID, "match": want.Match, "start": want.Start, "end": want.End, "label": want.Label, "limit": want.Limit, "timeout_seconds": want.TimeoutSeconds, "pass_auth_headers": want.PassAuthHeaders}
 	result, err := tool.Handler(context.Background(), request)
 	if err != nil || result.IsError {
 		t.Fatalf("%v %v", result, err)
@@ -60,5 +88,55 @@ func TestDiscoveryToolPreservesStructuredResultAndErrors(t *testing.T) {
 	result, err = tool.Handler(context.Background(), request)
 	if err != nil || !result.IsError {
 		t.Fatal("unsupported endpoint appeared successful")
+	}
+}
+
+func TestDiscoveryToolPreservesMultitenantScope(t *testing.T) {
+	for _, embedded := range []bool{false, true} {
+		name := "explicit"
+		if embedded {
+			name = "embedded"
+		}
+		t.Run(name, func(t *testing.T) {
+			want := vmanomaly.DiscoveryRequest{
+				Operation: "series", DatasourceURL: "https://vm.example",
+				TenantID: "multitenant",
+				Match:    []string{`up{vm_account_id="12",vm_project_id="3"}`, `up{vm_account_id="42"}`},
+				Start:    1, End: 2,
+			}
+			if embedded {
+				want.DatasourceURL += "/select/multitenant/prometheus"
+				want.TenantID = ""
+			}
+			const response = `{"items":[{"__name__":"up","vm_account_id":"12","vm_project_id":"3"},{"__name__":"up","vm_account_id":"42","vm_project_id":"0"}],"tenant_id":"multitenant","completeness":"unknown","warnings":["Multitenant inventory"]}`
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var got vmanomaly.DiscoveryRequest
+				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+					t.Error(err)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Errorf("tenant scope changed: %+v", got)
+				}
+				if _, err := w.Write([]byte(response)); err != nil {
+					t.Error(err)
+				}
+			}))
+			defer upstream.Close()
+			s := server.NewMCPServer("test", "1")
+			RegisterDiscoveryTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
+			var request mcp.CallToolRequest
+			request.Params.Arguments = map[string]any{
+				"operation": want.Operation, "datasource_url": want.DatasourceURL,
+				"tenant_id": want.TenantID, "match": want.Match, "start": want.Start, "end": want.End,
+			}
+			result, err := s.GetTool("vmanomaly_discover_metrics").Handler(context.Background(), request)
+			if err != nil || result.IsError {
+				t.Fatalf("%v %v", result, err)
+			}
+			encoded, err := json.Marshal(result.StructuredContent)
+			if err != nil || string(encoded) != response {
+				t.Fatalf("tenant labels or scope evidence changed: %s %v", encoded, err)
+			}
+		})
 	}
 }
