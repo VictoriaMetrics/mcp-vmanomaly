@@ -44,6 +44,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any) (
 }
 
 // doRequestLimited bounds decoded response storage for metadata and artifact calls.
+// A maxBytes value of zero leaves the response size unlimited.
 func (c *Client) doRequestLimited(ctx context.Context, method, path string, body any, maxBytes int64) ([]byte, error) {
 	var reqBody io.Reader
 	if body != nil {
