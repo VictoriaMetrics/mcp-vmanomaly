@@ -70,7 +70,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 
 	validateModelConfigTool := mcp.NewTool(
 		"vmanomaly_validate_model_config",
-		mcp.WithDescription("Validate an anomaly detection model configuration before using it. Returns validation result with the normalized/validated configuration or detailed error messages if invalid. Use this after building your model config to catch configuration errors before creating a detection task with vmanomaly_create_detection_task."),
+		mcp.WithDescription("Validate the schema of an anomaly detection model configuration. This does not assess model fit, data compatibility or deployment readiness. Returns validation result with the normalized/validated configuration or detailed error messages if invalid. Use this after building your model config to catch configuration errors before creating a detection task with vmanomaly_create_detection_task."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
 			Title:           "Validate Model Config",
 			ReadOnlyHint:    ptr(true),
@@ -155,7 +155,7 @@ func handleValidateModelConfig(client *vmanomaly.Client) func(ctx context.Contex
 		// Add helpful message
 		resultMsg := fmt.Sprintf("Validation Result:\n%s\n\n", string(responseJSON))
 		if validation.Valid {
-			resultMsg += "✓ Model configuration is valid and ready to use!"
+			resultMsg += "Model configuration is schema-valid. Model fit, data compatibility and deployment readiness have not been tested."
 		} else {
 			resultMsg += "✗ Model configuration is invalid. Check the errors above."
 		}
