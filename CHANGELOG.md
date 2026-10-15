@@ -5,6 +5,10 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Improvements
+
+- Refreshed embedded documentation for vmanomaly v1.31.1, including the periodic peer-model fix, current image examples, and state compatibility guidance.
+
 ## [v0.5.0] - 2026-10-09
 
 ### Features
