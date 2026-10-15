@@ -5,6 +5,16 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+## [v0.5.1] - 2026-10-15
+
+### Improvements
+
+- Refreshed embedded documentation for vmanomaly v1.31.1, including the periodic peer-model fix, current image examples, and state compatibility guidance.
+
+### Security
+
+- Updated `golang.org/x/text` to v0.41.0 for [GO-2026-6629 / CVE-2026-56851](https://pkg.go.dev/vuln/GO-2026-6629). The affected package is not imported by this server.
+
 ## [v0.5.0] - 2026-10-09
 
 ### Features
@@ -168,6 +178,7 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.5.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.2...v0.5.0
 [v0.4.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.0...v0.4.1
