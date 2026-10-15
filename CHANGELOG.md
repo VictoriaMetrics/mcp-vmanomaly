@@ -11,6 +11,10 @@ published as the corresponding GitHub release notes.
 
 - Refreshed embedded documentation for vmanomaly v1.31.1, including the periodic peer-model fix, current image examples, and state compatibility guidance.
 
+### Security
+
+- Updated `golang.org/x/text` to v0.41.0 for [GO-2026-6629 / CVE-2026-56851](https://pkg.go.dev/vuln/GO-2026-6629). The affected package is not imported by this server.
+
 ## [v0.5.0] - 2026-10-09
 
 ### Features
