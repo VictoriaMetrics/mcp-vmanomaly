@@ -449,6 +449,12 @@ MCP vmanomaly provides tools organized into categories:
 
 `vmanomaly_discover_metrics` calls the additive `POST /api/v1/discovery` API. It is not part of the vmanomaly 1.31.0 baseline: check the installed endpoint, and treat 404 as unsupported. Supply a datasource, optional explicit tenant, selectors and a fixed window. Each call performs one metadata request; no historical samples, retries or tenant enumeration. Defaults are 100 results and 10 seconds; maxima are 1,000 results, 10 selectors, 31 days and 30 seconds. The MCP client caps response bytes but does not limit concurrent discovery calls; server-side admission limits depend on the deployed backend. These caps do not bound the TSDB index scan. Preserve upstream warnings and `completeness`; returned counts are neither total cardinality nor exact historical coverage.
 
+#### Preset configuration and alert artifacts
+
+`vmanomaly_generate_preset_artifacts` calls the additive `POST /api/v1/preset/artifacts` API. It is not part of the vmanomaly 1.31.0 baseline: check endpoint support and treat 404 as unsupported. Supply a complete configuration with explicit reader and VictoriaMetrics writer destinations, models and schedulers. Optional alert policy controls threshold, evaluation interval, persistence and the externally reachable incident base URL. `entity_labels` contains only known source labels; omit it for query-group links. Results retain structured configuration/rules, equivalent YAML, schema version and warnings. The request is limited to 1 MiB and the response to 8 MiB.
+
+Generation is read-only. `schema-valid` does not establish data coverage, sizing, connectivity, alert delivery or deployment readiness. The existing configuration and example-rule tools remain available; a successful validation response describes schema validation only. Use separate rendering and live checks before deployment.
+
 #### Health & Info (4 tools)
 
 | Tool                           | Description                                             |
