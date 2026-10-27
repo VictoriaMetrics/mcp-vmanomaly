@@ -33,6 +33,11 @@ func (c *Client) GenerateArtifacts(ctx context.Context, request ArtifactRequest)
 	if request.Config == nil {
 		return nil, fmt.Errorf("config is required")
 	}
+	for _, field := range request.RequiredInputs {
+		if field != "writer.datasource_url" && field != "writer.tenant_id" {
+			return nil, fmt.Errorf("unsupported required input: %q", field)
+		}
+	}
 	body, err := json.Marshal(request)
 	if err != nil {
 		return nil, fmt.Errorf("artifact request is not JSON serializable")

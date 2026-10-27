@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/config"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/resources"
 )
 
 func testConfig(t *testing.T, enabledTools, disabledTools string, disableResources bool) *config.Config {
@@ -177,5 +178,9 @@ func TestPresetGuideToolWorksWithResourcesDisabled(t *testing.T) {
 	result, ok := response["result"].(map[string]any)
 	if !ok || result["isError"] == true {
 		t.Fatalf("guide retrieval was not successful: %v", response)
+	}
+	content, ok := result["structuredContent"].(map[string]any)
+	if !ok || content["uri"] != resources.PresetGuideURI || content["guide"] == "" || content["guide"] == nil {
+		t.Fatalf("missing guide content: %v", result)
 	}
 }

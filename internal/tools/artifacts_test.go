@@ -61,7 +61,10 @@ func TestArtifactArgsPreserveOmittedAndExplicitValues(t *testing.T) {
 				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
 					t.Error(err)
 				}
-				expected := map[string]any{"config": config, "required_inputs": []any{"writer.tenant_id"}}
+				expected := map[string]any{"config": config}
+				if alerts != nil {
+					expected["required_inputs"] = []any{"writer.tenant_id"}
+				}
 				if alerts != nil {
 					expected["alerts"] = alerts
 				}
@@ -76,7 +79,10 @@ func TestArtifactArgsPreserveOmittedAndExplicitValues(t *testing.T) {
 			s := server.NewMCPServer("test", "1")
 			RegisterArtifactTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
 			var request mcp.CallToolRequest
-			request.Params.Arguments = map[string]any{"config": config, "required_inputs": []string{"writer.tenant_id"}}
+			request.Params.Arguments = map[string]any{"config": config}
+			if alerts != nil {
+				request.Params.Arguments.(map[string]any)["required_inputs"] = []string{"writer.tenant_id"}
+			}
 			if alerts != nil {
 				request.Params.Arguments.(map[string]any)["alerts"] = alerts
 			}
@@ -167,5 +173,18 @@ func TestArtifactSchemaNumericBounds(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestArtifactRejectsUnknownRequiredInputBeforeDispatch(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("invalid draft request reached backend") }))
+	defer upstream.Close()
+	s := server.NewMCPServer("test", "1")
+	RegisterArtifactTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
+	var request mcp.CallToolRequest
+	request.Params.Arguments = map[string]any{"config": map[string]any{}, "required_inputs": []string{"reader.tenant_id"}}
+	result, err := s.GetTool("vmanomaly_generate_preset_artifacts").Handler(context.Background(), request)
+	if err != nil || !result.IsError {
+		t.Fatalf("expected local validation error: %v %v", result, err)
 	}
 }
