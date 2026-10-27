@@ -31,7 +31,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
   - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for experimental peer-group tuning and deployment sizing
-- Go 1.26.9 or higher (if building from source)
+- Go 1.26.10 or higher (if building from source)
 
 ## Installation
 
@@ -444,6 +444,10 @@ But it's not required, you can just start asking questions and the assistant wil
 ### Toolset
 
 MCP vmanomaly provides tools organized into categories:
+
+#### Bounded metric discovery
+
+`vmanomaly_discover_metrics` calls the additive `POST /api/v1/discovery` API. It is not part of the vmanomaly 1.31.0 baseline: check the installed endpoint, and treat 404 as unsupported. Supply a datasource, optional explicit tenant, selectors and a fixed window. Tenant scope may be numeric (`accountID` or `accountID:projectID`) or explicitly `multitenant`, including a `/select/multitenant/prometheus` datasource URL; conflicting URL/request tenants are rejected by the discovery API. Multitenant metadata reads require VictoriaMetrics v1.104.0 or newer and a discovery API version that accepts this scope. Preserve `vm_account_id`/`vm_project_id` selectors and returned series labels; never automatically broaden a numeric tenant scope. Metric/label inventories across tenants do not establish per-tenant coverage. Each call performs one metadata request; no historical samples, retries or tenant enumeration. Defaults are 100 results and 10 seconds; maxima are 1,000 results, 10 selectors, 31 days and 30 seconds. The MCP client caps response bytes but does not limit concurrent discovery calls; server-side admission limits depend on the deployed backend. These caps do not bound the TSDB index scan. Preserve upstream warnings and `completeness`; returned counts are neither total cardinality nor exact historical coverage.
 
 #### Health & Info (4 tools)
 

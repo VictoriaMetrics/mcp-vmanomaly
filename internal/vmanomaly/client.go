@@ -40,6 +40,12 @@ func NewClientWithTimeout(baseURL, bearerToken string, customHeaders map[string]
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) ([]byte, error) {
+	return c.doRequestLimited(ctx, method, path, body, 0)
+}
+
+// doRequestLimited bounds decoded response storage for metadata and artifact calls.
+// A maxBytes value of zero leaves the response size unlimited.
+func (c *Client) doRequestLimited(ctx context.Context, method, path string, body any, maxBytes int64) ([]byte, error) {
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -71,11 +77,18 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any) (
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	var reader io.Reader = resp.Body
+	if maxBytes > 0 {
+		reader = io.LimitReader(resp.Body, maxBytes+1)
+	}
+	respBody, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if maxBytes > 0 && int64(len(respBody)) > maxBytes {
+		return nil, fmt.Errorf("response exceeds byte budget")
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
