@@ -629,6 +629,23 @@ You should double check the results obtained with AI.
 
 The quality of the MCP Server and its responses depends very much on the capabilities of your client and the quality of the model you are using.
 
+## Preset workflow guide
+For preset requests, retrieve `vmanomaly_get_preset_guide` before choosing tools. MCP initialization advertises this routing instruction. The read-only, no-argument tool returns the complete guide and version/source/SHA-256 metadata without network or backend access. Clients with resource support can read `vmanomaly://guides/preset/v1`; resources do not execute automatically.
+
+The canonical source is `plugins/vmanomaly/skills/vmanomaly-preset/references/copilot-preset-guide-v1.md` in VictoriaMetrics/skills. Do not edit the embedded copy. Run `python3 scripts/sync-preset-guide.py /path/to/skills` from a fetched canonical checkout after the skills changes merge into `origin/main`; `--check` verifies the committed snapshot and provenance. For a dependent PR only, `--allow-unmerged` explicitly marks review provenance; rerun without that flag from the merged skills revision before merging the MCP follow-up. The origin URL check prevents accidental misattribution, not malicious local Git metadata.
+
+The guide lives in `internal/resources/guides/`, separately from release documentation search. Its tool remains available when documentation resources are disabled. It requires the discovery/artifact capabilities for that workflow, but retrieving it works offline. Instructions establish workflow budgets, not runtime enforcement. Successful artifact results become download cards only in clients implementing that renderer. Unknown writer settings default to draft generation using a `.invalid` URL and `required_inputs` (writer URL and/or tenant). Never probe placeholders. Deployment-ready requests require resolving those inputs first. Responses retain the checklist and `deployment_ready: false`; schema validation alone never proves readiness. No deployment is performed.
+
+The [model-selection guide](https://docs.victoriametrics.com/anomaly-detection/guides/model-selection/) is an external reference, not bundled content. Search installed documentation for related model details; do not assume this page is available offline. Live schemas take precedence over static guidance.
+
+### Refreshing embedded resources
+
+Run `make update-docs` for selected manuals, or `bash scripts/update-docs.sh --revision <tag>` for a source release tag. The resolved source commit is recorded in `internal/resources/docs/snapshot.json`. Refresh the preset guide separately with `python3 scripts/sync-preset-guide.py /path/to/skills`; its committed source revision and content hash are recorded alongside it. The model-selection page remains link-only during refreshes.
+
+Both refreshes stage complete snapshots in repository-local `tmp/resource-sync`, serialize writers with a nonblocking lock, and restore the previous snapshot if publication fails. Run them before builds: directory replacement has a short absence window, and this is not a crash-atomic transaction. A failed rollback preserves the previous snapshot under that scratch directory for recovery. These maintainer scripts require Python 3.10+ on Linux/macOS; their offline regression tests run with `python3 -m unittest discover -s scripts/tests -v`.
+
+The guide links to the Helm chart and VM Operator documentation. A chart's `Chart.yaml` identifies a version but cannot define values or render manifests by itself. Use matching release values/templates/schema or Operator CRDs when preparing those deployment formats; these links are not bundled deployment generators.
+
 ## Contributing
 
 Contributions to the MCP vmanomaly project are welcome!

@@ -20,6 +20,9 @@ func TestArtifactRequestPreservesMappingsAndZeroPersistence(t *testing.T) {
 		if input["alerts"].(map[string]any)["persistence_seconds"] != float64(0) {
 			t.Error("lost explicit zero")
 		}
+		if inputs, ok := input["required_inputs"].([]any); !ok || len(inputs) != 1 || inputs[0] != "writer.tenant_id" {
+			t.Error("lost draft requirements")
+		}
 		if len(input["config"].(map[string]any)["models"].(map[string]any)) != 2 {
 			t.Error("lost mappings")
 		}
@@ -30,8 +33,9 @@ func TestArtifactRequestPreservesMappingsAndZeroPersistence(t *testing.T) {
 	defer server.Close()
 	zero := 0
 	result, err := NewClient(server.URL, "", nil).GenerateArtifacts(context.Background(), ArtifactRequest{
-		Config: map[string]any{"models": map[string]any{"a": map[string]any{"queries": []string{"cpu"}}, "b": map[string]any{"queries": []string{"mem"}}}},
-		Alerts: &ArtifactAlertPolicy{PersistenceSeconds: &zero},
+		Config:         map[string]any{"models": map[string]any{"a": map[string]any{"queries": []string{"cpu"}}, "b": map[string]any{"queries": []string{"mem"}}}},
+		Alerts:         &ArtifactAlertPolicy{PersistenceSeconds: &zero},
+		RequiredInputs: []string{"writer.tenant_id"},
 	})
 	if err != nil || !json.Valid(result) {
 		t.Fatalf("%s %v", result, err)

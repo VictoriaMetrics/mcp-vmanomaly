@@ -5,6 +5,11 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Features
+
+- Added a versioned preset workflow guide, available through a read-only tool and an optional MCP resource, with guidance for discovery, sizing, missing destinations and artifact generation.
+- Added optional `required_inputs` forwarding for draft preset artifacts.
+
 ### Security
 
 - Updated the Go build toolchain to 1.26.10 to address [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) in certificate verification.

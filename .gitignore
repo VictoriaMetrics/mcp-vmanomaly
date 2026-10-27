@@ -34,3 +34,7 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# Resource refresh staging and Python script caches
+/tmp/
+__pycache__/
