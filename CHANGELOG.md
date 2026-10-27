@@ -7,6 +7,10 @@ published as the corresponding GitHub release notes.
 
 ### Security
 
+- Updated the Go build toolchain to 1.26.10 to address [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) in certificate verification.
+
+### Security
+
 - Add opt-in Linux FIPS builds with startup enforcement of the pinned Go Cryptographic Module and dedicated TLS/container regression checks.
 
 ## [v0.4.2] - 2026-09-24
