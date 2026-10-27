@@ -33,5 +33,8 @@ jobs:
       - name: Run test
         run: make test
 
+      - name: Test resource refresh scripts
+        run: python3 -m unittest discover -s scripts/tests -v
+
       - name: Run build
         run: make build

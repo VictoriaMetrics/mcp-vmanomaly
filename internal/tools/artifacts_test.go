@@ -61,7 +61,7 @@ func TestArtifactArgsPreserveOmittedAndExplicitValues(t *testing.T) {
 				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
 					t.Error(err)
 				}
-				expected := map[string]any{"config": config}
+				expected := map[string]any{"config": config, "required_inputs": []any{"writer.tenant_id"}}
 				if alerts != nil {
 					expected["alerts"] = alerts
 				}
@@ -76,7 +76,7 @@ func TestArtifactArgsPreserveOmittedAndExplicitValues(t *testing.T) {
 			s := server.NewMCPServer("test", "1")
 			RegisterArtifactTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
 			var request mcp.CallToolRequest
-			request.Params.Arguments = map[string]any{"config": config}
+			request.Params.Arguments = map[string]any{"config": config, "required_inputs": []string{"writer.tenant_id"}}
 			if alerts != nil {
 				request.Params.Arguments.(map[string]any)["alerts"] = alerts
 			}
@@ -125,7 +125,7 @@ func TestArtifactSchemaDescribesInputs(t *testing.T) {
 		}
 	}
 	visit(schema)
-	for _, name := range []string{"config", "alerts", "threshold", "evaluation_seconds", "persistence_seconds", "incident_base_url", "entity_labels"} {
+	for _, name := range []string{"config", "required_inputs", "alerts", "threshold", "evaluation_seconds", "persistence_seconds", "incident_base_url", "entity_labels"} {
 		if descriptions[name] == "" {
 			t.Errorf("missing description for %s", name)
 		}

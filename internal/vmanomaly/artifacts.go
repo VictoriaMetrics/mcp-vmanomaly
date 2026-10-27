@@ -16,8 +16,9 @@ const (
 
 // ArtifactRequest carries a complete runtime configuration; generation does not deploy it.
 type ArtifactRequest struct {
-	Config map[string]any       `json:"config"`
-	Alerts *ArtifactAlertPolicy `json:"alerts,omitempty"`
+	RequiredInputs []string             `json:"required_inputs,omitempty"`
+	Config         map[string]any       `json:"config"`
+	Alerts         *ArtifactAlertPolicy `json:"alerts,omitempty"`
 }
 
 type ArtifactAlertPolicy struct {

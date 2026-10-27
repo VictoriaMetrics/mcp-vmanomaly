@@ -163,3 +163,19 @@ func TestHooksDoNotExposeClientOrToolArguments(t *testing.T) {
 		t.Fatalf("secret leaked into logs: %s", logOutput.String())
 	}
 }
+
+func TestPresetGuideToolWorksWithResourcesDisabled(t *testing.T) {
+	cfg := testConfig(t, "vmanomaly_get_preset_guide", "", true)
+	s, err := newMCPServer(cfg, metrics.NewSet(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := handleMessage(t, s, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"vmanomaly_get_preset_guide","arguments":{}}}`)
+	if response["error"] != nil {
+		t.Fatalf("guide retrieval failed: %v", response)
+	}
+	result, ok := response["result"].(map[string]any)
+	if !ok || result["isError"] == true {
+		t.Fatalf("guide retrieval was not successful: %v", response)
+	}
+}

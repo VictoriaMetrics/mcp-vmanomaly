@@ -252,7 +252,7 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 		server.WithRecovery(),
 		server.WithToolCapabilities(true),
 		server.WithPromptCapabilities(false),
-		server.WithInstructions(serverInstructions),
+		server.WithInstructions(serverInstructions + "\n" + resources.PresetGuideInstructions),
 		server.WithHooks(hooks.New(ms)),
 		toolFilter,
 		toolPolicy,
@@ -277,6 +277,7 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 	)
 	tools.RegisterTools(mcpServer, client)
 	if !c.IsResourcesDisabled() {
+		resources.RegisterPresetGuideResource(mcpServer)
 		if err := resources.RegisterDocsResources(mcpServer); err != nil {
 			return nil, err
 		}
