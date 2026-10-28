@@ -5,6 +5,10 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Features
+
+- Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
+
 ### Security
 
 - Updated the Go build toolchain to 1.26.10 to address [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) in certificate verification.

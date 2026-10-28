@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
 
@@ -49,6 +50,11 @@ type AutotuneTaskArgs struct {
 	OptimizationParams      map[string]any                      `json:"optimization_params,omitempty" jsonschema:"description=Advanced tuning controls: n_trials timeout n_jobs n_splits train_val_ratio seed validation_scheme beta show_progress_bar gc_after_trial exact optimize_complexity. Set exact=true for online models when production uses causal exact inference. optimization_n_trials and optimization_timeout override matching keys."`
 	OptimizedBusinessParams []string                            `json:"optimized_business_params,omitempty" jsonschema:"description=Legacy model-local business parameters to tune: detection_direction min_dev_from_expected min_rel_dev_from_expected. For vmanomaly v1.30.2+ prefer freezing stable policies during tuning and emitting them under reader.queries.<alias> in complete configs."`
 	FrozenParams            map[string]any                      `json:"frozen_params,omitempty" jsonschema:"description=Top-level model parameters to freeze while tuning, e.g. detection_direction='above_expected'. For vmanomaly v1.30.2+ emit stable data_range detection_direction and deviation policies under reader.queries.<alias> in complete configs. Reserved keys class and class_name are rejected. For Prophet with step < 1h, include compression={window:'1h',agg_method:'mean',adjust_boundaries:true} unless sub-hour baseline patterns are required."`
+}
+
+type AutotuneTaskStatusArgs struct {
+	TaskID      string `json:"task_id" jsonschema:"required,description=Autotune task ID returned by creation"`
+	WaitSeconds int    `json:"wait_seconds,omitempty" jsonschema:"minimum=0,maximum=10,description=Wait up to this many seconds for completion (default 0: immediate). Prefer 10 to avoid repeated LLM polling turns. Returns latest status if still running; never creates a new task."`
 }
 
 type AutotuneTaskIDArgs struct {
@@ -97,7 +103,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[AutotuneTaskIDArgs](),
+		mcp.WithInputSchema[AutotuneTaskStatusArgs](),
 	)
 	s.AddTool(getAutotuneTool, mcp.NewTypedToolHandler(handleGetAutotuneTask(client)))
 
@@ -257,9 +263,14 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 	}
 }
 
-func handleGetAutotuneTask(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args AutotuneTaskIDArgs) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, req mcp.CallToolRequest, args AutotuneTaskIDArgs) (*mcp.CallToolResult, error) {
-		result, err := client.GetAutotuneTask(ctx, args.TaskID)
+func handleGetAutotuneTask(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args AutotuneTaskStatusArgs) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, req mcp.CallToolRequest, args AutotuneTaskStatusArgs) (*mcp.CallToolResult, error) {
+		if args.WaitSeconds < 0 || args.WaitSeconds > maxAutotuneWaitSeconds {
+			return mcp.NewToolResultError("wait_seconds must be between 0 and 10"), nil
+		}
+		result, err := waitAutotuneTask(ctx, func(callCtx context.Context) (*vmanomaly.AutotuneTaskStatus, error) {
+			return client.GetAutotuneTask(callCtx, args.TaskID)
+		}, time.Duration(args.WaitSeconds)*time.Second, autotunePollInterval)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to get shared autotune task: %v", err)), nil
 		}
