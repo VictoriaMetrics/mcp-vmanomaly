@@ -154,8 +154,17 @@ type NamedQuerySpec struct {
 	MinRelDevFromExpected []float64 `json:"min_rel_dev_from_expected,omitempty"`
 }
 
+// AutotuneReplayConfig evaluates the requested range using a deployment schedule.
+// Duration syntax and schedule ordering are validated by the backend.
+type AutotuneReplayConfig struct {
+	FitWindow  string `json:"fit_window" jsonschema:"required,description=Training history preceding each fit (e.g. 3d); fetched before start for the initial fit"`
+	FitEvery   string `json:"fit_every" jsonschema:"required,description=Refit interval (e.g. 1000w for a deliberately long online refit interval); must be positive"`
+	InferEvery string `json:"infer_every" jsonschema:"required,description=Inference/update interval (e.g. 5m); positive and no greater than fit_every. Separate from query sampling step"`
+}
+
 // AutotuneTaskRequest represents a shared autotune task request.
 type AutotuneTaskRequest struct {
+	Replay                  *AutotuneReplayConfig     `json:"replay,omitempty"`
 	Queries                 map[string]NamedQuerySpec `json:"queries,omitempty"`
 	Query                   string                    `json:"query,omitempty"`                     // PromQL/LogsQL query to sample and tune
 	TunedClassName          string                    `json:"tuned_class_name"`                    // Model class or alias to tune
