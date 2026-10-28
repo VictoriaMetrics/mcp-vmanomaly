@@ -23,6 +23,8 @@ published as the corresponding GitHub release notes.
 
 ### Features
 
+- Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
+
 - Added deployment-resource, inference-capacity and profile-discovery tools for [vmanomaly v1.31.0+](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).
 - Added rough sizing estimates for fixed, equal-size peer groups, including larger populations, with clear estimate limitations and distinct pool and peer-series counts.
 - Preserved workload and sharding constraints, distinguished online bootstrap from periodic refits, and returned recoverable sizing errors with concise operational results.
