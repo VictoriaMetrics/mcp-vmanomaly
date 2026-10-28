@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
@@ -25,7 +26,7 @@ func waitAutotuneTask(ctx context.Context, get func(context.Context) (*vmanomaly
 			return nil, ctx.Err()
 		}
 		if err != nil {
-			if waitCtx.Err() != nil && latest != nil {
+			if errors.Is(err, context.DeadlineExceeded) && waitCtx.Err() == context.DeadlineExceeded && latest != nil {
 				return latest, nil
 			}
 			return nil, err

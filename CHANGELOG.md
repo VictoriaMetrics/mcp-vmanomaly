@@ -10,6 +10,7 @@ published as the corresponding GitHub release notes.
 - Added a versioned preset workflow guide, available through a read-only tool and an optional MCP resource, with guidance for discovery, sizing, missing destinations and artifact generation.
 - Added optional `required_inputs` forwarding for draft preset artifacts.
 - Added optional deployment-schedule replay to [shared autotune requests](https://docs.victoriametrics.com/anomaly-detection/components/server/#time-series-analysis-and-autotune-api), with explicit evaluation windows and preserved fold-based defaults.
+- Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
 
 ### Security
 
@@ -28,8 +29,6 @@ published as the corresponding GitHub release notes.
 ## [v0.5.0] - 2026-10-09
 
 ### Features
-
-- Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
 
 - Added deployment-resource, inference-capacity and profile-discovery tools for [vmanomaly v1.31.0+](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).
 - Added rough sizing estimates for fixed, equal-size peer groups, including larger populations, with clear estimate limitations and distinct pool and peer-series counts.
