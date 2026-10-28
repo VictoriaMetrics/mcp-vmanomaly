@@ -29,6 +29,8 @@ type TimeseriesCharacteristicsArgs struct {
 }
 
 type AutotuneTaskArgs struct {
+	Replay *vmanomaly.AutotuneReplayConfig `json:"replay,omitempty" jsonschema:"description=Optional deployment-schedule evaluation on fixed start/end Unix timestamps with preceding fit history. Omit for fold-based tuning. Requires backend replay support; verify completed result_data.data.optimization.replay matches this request before claiming schedule validation. For causal online updates also set optimization_params.exact=true. This tuning range is not an independent holdout"`
+
 	Queries                 map[string]vmanomaly.NamedQuerySpec `json:"queries,omitempty" jsonschema:"description=Named expressions keyed by alias with optional per-query business policies. One shared study across all inputs; use frozen_params.groupby for multivariate or peer grouping. On v1.31.0+ peer_outlier keeps queries as separate populations; retain entity identity labels in query results."`
 	Query                   string                              `json:"query,omitempty" jsonschema:"description=Legacy expression; provide exactly one of query or queries"`
 	TunedClassName          string                              `json:"tuned_class_name" jsonschema:"required,description=Model class or alias to tune. Call vmanomaly_list_models first for available models. Supports one expression or named queries with separate business policies. Tune the multivariate class directly for joint detection; never merge separate univariate studies."`
@@ -201,6 +203,7 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid optimization parameters: %v", err)), nil
 		}
 		tuneReq := &vmanomaly.AutotuneTaskRequest{
+			Replay:                  args.Replay,
 			Query:                   query,
 			Queries:                 args.Queries,
 			TunedClassName:          strings.TrimSpace(args.TunedClassName),

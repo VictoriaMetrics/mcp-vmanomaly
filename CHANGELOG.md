@@ -5,6 +5,10 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Features
+
+- Added optional deployment-schedule replay to [shared autotune requests](https://docs.victoriametrics.com/anomaly-detection/components/server/#time-series-analysis-and-autotune-api), with explicit evaluation windows and preserved fold-based defaults.
+
 ### Security
 
 - Updated the Go build toolchain to 1.26.10 to address [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) in certificate verification.

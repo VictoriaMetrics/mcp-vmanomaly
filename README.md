@@ -534,6 +534,10 @@ Forward sizing resolves omitted scored points from explicit sampling and cadence
 | `vmanomaly_get_autotune_task`          | Poll autotune progress and retrieve a completed recommendation              |
 | `vmanomaly_cancel_autotune_task`       | Request cooperative cancellation of an autotune task                        |
 
+For schedule-aware tuning, optionally pass `replay: {"fit_window":"3d", "fit_every":"1000w", "infer_every":"5m"}` together with fixed `start`/`end` Unix timestamps and the production sampling `step`. The backend fetches preceding training history and evaluates that inference range with the requested schedule. For causal online updates, also set `optimization_params.exact: true`. Omitting `replay` preserves fold-based tuning. The backend owns duration parsing and schedule validation.
+
+Replay requires a backend that supports this optional contract. Check that the completed `result_data.data.optimization.replay` matches the requested schedule; older backends may ignore unknown fields. Missing/mismatched replay metadata is not schedule validation. Preserve errors rather than retrying without replay. This evaluated range was used for tuning: validate the selected configuration on a separate later holdout before claiming generalization or reduced false positives.
+
 `vmanomaly_create_autotune_task` accepts `optimization_n_trials`, `optimization_timeout`, and advanced
 `optimization_params` to bound Optuna work. The MCP tool uses interactive defaults of 32 trials and
 8 seconds when no optimization budget is provided, and a conservative anomaly fraction of 0.02 when
