@@ -30,7 +30,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.28.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1283)+ for the core MCP toolset
   - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
-  - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for experimental peer-group tuning and deployment sizing
+  - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for schedule replay in shared autotune, experimental peer-group tuning and deployment sizing
 - Go 1.26.10 or higher (if building from source)
 
 ## Installation
@@ -533,6 +533,10 @@ Forward sizing resolves omitted scored points from explicit sampling and cadence
 | `vmanomaly_create_autotune_task`       | Start tuning one requested model class on sampled series                    |
 | `vmanomaly_get_autotune_task`          | Poll autotune progress and retrieve a completed recommendation              |
 | `vmanomaly_cancel_autotune_task`       | Request cooperative cancellation of an autotune task                        |
+
+For schedule-aware tuning, optionally pass `replay: {"fit_window":"3d", "fit_every":"1000w", "infer_every":"5m"}` together with fixed `start`/`end` Unix timestamps and the production sampling `step`. The backend fetches preceding training history and evaluates that inference range with the requested schedule. For causal online updates, also set `optimization_params.exact: true`. Omitting `replay` preserves fold-based tuning. The backend owns duration parsing and schedule validation.
+
+Replay requires vmanomaly [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+. Check that the completed `result_data.data.optimization.replay` matches the requested schedule; older backends may ignore unknown fields. Missing/mismatched replay metadata is not schedule validation. Preserve errors rather than retrying without replay. This evaluated range was used for tuning: validate the selected configuration on a separate later holdout before claiming generalization or reduced false positives.
 
 `vmanomaly_create_autotune_task` accepts `optimization_n_trials`, `optimization_timeout`, and advanced
 `optimization_params` to bound Optuna work. The MCP tool uses interactive defaults of 32 trials and
