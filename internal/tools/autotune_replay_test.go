@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/vmanomaly"
@@ -64,5 +65,38 @@ func TestAutotuneReplayBackendErrorIsNotRetried(t *testing.T) {
 	result, err := s.GetTool("vmanomaly_create_autotune_task").Handler(context.Background(), req)
 	if err != nil || !result.IsError || calls != 1 {
 		t.Fatalf("unexpected fallback: calls=%d result=%v err=%v", calls, result, err)
+	}
+}
+
+func TestAutotuneReplayValidationDoesNotSuggestBudgetRetry(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		start    any
+		schedule map[string]any
+		field    string
+	}{
+		{"missing start", nil, map[string]any{"fit_window": "1d", "fit_every": "1000w", "infer_every": "5m"}, "start"},
+		{"missing fit window", 100, map[string]any{"fit_every": "1000w", "infer_every": "5m"}, "fit_window"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("invalid request reached backend") }))
+			defer upstream.Close()
+			s := server.NewMCPServer("test", "1")
+			RegisterAnalysisTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
+			var req mcp.CallToolRequest
+			args := map[string]any{"query": "up", "tuned_class_name": "mad_online", "end": 200, "replay": tc.schedule}
+			if tc.start != nil {
+				args["start"] = tc.start
+			}
+			req.Params.Arguments = args
+			result, err := s.GetTool("vmanomaly_create_autotune_task").Handler(context.Background(), req)
+			if err != nil || !result.IsError {
+				t.Fatalf("expected tool error: %v %v", result, err)
+			}
+			text := result.Content[0].(mcp.TextContent).Text
+			if !strings.Contains(text, tc.field) || strings.Contains(text, "budget") || strings.Contains(text, "sampled limit") {
+				t.Fatalf("misleading validation guidance: %s", text)
+			}
+		})
 	}
 }

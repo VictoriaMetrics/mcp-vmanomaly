@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -240,6 +241,9 @@ func handleCreateAutotuneTask(client *vmanomaly.Client) func(ctx context.Context
 
 		result, err := client.CreateAutotuneTask(ctx, tuneReq)
 		if err != nil {
+			if errors.Is(err, vmanomaly.ErrInvalidAutotuneReplay) {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 			return mcp.NewToolResultError(fmt.Sprintf(
 				"Failed to create shared autotune task with budget %s: %v. Do not present profile-only settings as autotuned params; ask whether to retry with a smaller budget or sampled limit.",
 				describeOptimizationBudget(optimizationParams),
