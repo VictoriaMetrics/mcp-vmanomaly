@@ -5,6 +5,10 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Features
+
+- Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
+
 ### Security
 
 - Updated the Go build toolchain to 1.26.10 to address [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) in certificate verification.
@@ -22,8 +26,6 @@ published as the corresponding GitHub release notes.
 ## [v0.5.0] - 2026-10-09
 
 ### Features
-
-- Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
 
 - Added deployment-resource, inference-capacity and profile-discovery tools for [vmanomaly v1.31.0+](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).
 - Added rough sizing estimates for fixed, equal-size peer groups, including larger populations, with clear estimate limitations and distinct pool and peer-series counts.

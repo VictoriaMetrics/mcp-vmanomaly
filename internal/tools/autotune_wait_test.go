@@ -77,3 +77,65 @@ func TestAutotuneWaitPropagatesBackendFailure(t *testing.T) {
 		t.Fatal("backend failure lost", err)
 	}
 }
+
+func TestAutotuneWaitErrorAtDeadline(t *testing.T) {
+	for _, deadlineError := range []bool{false, true} {
+		backendError := errors.New("backend failed at deadline")
+		calls := 0
+		result, err := waitAutotuneTask(context.Background(), func(ctx context.Context) (*vmanomaly.AutotuneTaskStatus, error) {
+			calls++
+			if calls == 1 {
+				return &vmanomaly.AutotuneTaskStatus{Status: "running"}, nil
+			}
+			<-ctx.Done()
+			if deadlineError {
+				return nil, ctx.Err()
+			}
+			return nil, backendError
+		}, 100*time.Millisecond, 0)
+		if calls != 2 {
+			t.Fatalf("expected in-flight request at deadline, got %d calls", calls)
+		}
+		if deadlineError {
+			if err != nil || result == nil || result.Status != "running" {
+				t.Fatalf("deadline lost latest status: %v, %v", result, err)
+			}
+		} else if !errors.Is(err, backendError) {
+			t.Fatalf("backend error masked: %v", err)
+		}
+	}
+}
+
+func TestAutotuneWaitInFlightCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	entered := make(chan struct{})
+	finished := make(chan error, 1)
+	go func() {
+		calls := 0
+		_, err := waitAutotuneTask(ctx, func(requestCtx context.Context) (*vmanomaly.AutotuneTaskStatus, error) {
+			calls++
+			if calls == 1 {
+				return &vmanomaly.AutotuneTaskStatus{Status: "running"}, nil
+			}
+			close(entered)
+			<-requestCtx.Done()
+			return nil, requestCtx.Err()
+		}, time.Minute, 0)
+		finished <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("poll did not start")
+	}
+	cancel()
+	select {
+	case err := <-finished:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("parent cancellation lost: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("poll did not stop after cancellation")
+	}
+}
