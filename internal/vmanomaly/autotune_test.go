@@ -2,6 +2,7 @@ package vmanomaly
 
 import (
 	"context"
+	"errors"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +22,9 @@ func TestInvalidAutotuneReplayNeverReachesBackend(t *testing.T) {
 		{"reversed bounds", number(2), number(1), AutotuneReplayConfig{"1d", "1000w", "5m"}},
 		{"nan", number(math.NaN()), number(2), AutotuneReplayConfig{"1d", "1000w", "5m"}},
 		{"infinite", number(1), number(math.Inf(1)), AutotuneReplayConfig{"1d", "1000w", "5m"}},
+		{"negative infinity", number(math.Inf(-1)), number(2), AutotuneReplayConfig{"1d", "1000w", "5m"}},
+		{"blank fit window", number(1), number(2), AutotuneReplayConfig{" ", "1000w", "5m"}},
+		{"blank infer interval", number(1), number(2), AutotuneReplayConfig{"1d", "1000w", "\t"}},
 		{"empty schedule", number(1), number(2), AutotuneReplayConfig{}},
 		{"blank duration", number(1), number(2), AutotuneReplayConfig{"1d", " ", "5m"}},
 	} {
@@ -28,9 +32,22 @@ func TestInvalidAutotuneReplayNeverReachesBackend(t *testing.T) {
 			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("invalid replay reached backend") }))
 			defer upstream.Close()
 			_, err := NewClient(upstream.URL, "", nil).CreateAutotuneTask(context.Background(), &AutotuneTaskRequest{Start: tc.start, End: tc.end, Replay: &tc.replay})
-			if err == nil {
-				t.Fatal("invalid replay accepted")
+			if !errors.Is(err, ErrInvalidAutotuneReplay) {
+				t.Fatalf("expected replay validation error, got %v", err)
 			}
 		})
+	}
+}
+
+func TestNilAutotuneRequestPreservesBackendHandling(t *testing.T) {
+	calls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.Error(w, "request required", http.StatusUnprocessableEntity)
+	}))
+	defer upstream.Close()
+	_, err := NewClient(upstream.URL, "", nil).CreateAutotuneTask(context.Background(), nil)
+	if err == nil || errors.Is(err, ErrInvalidAutotuneReplay) || calls != 1 {
+		t.Fatalf("nil request did not preserve backend handling: calls=%d err=%v", calls, err)
 	}
 }
