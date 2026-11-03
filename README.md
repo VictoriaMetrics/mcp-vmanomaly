@@ -140,6 +140,11 @@ MCP Server for vmanomaly is configured via environment variables:
 | `VMANOMALY_BEARER_TOKEN_FILE` | Path to a bearer-token file, suitable for mounted container/orchestrator secrets                  | No       | -                | -                      |
 | `VMANOMALY_HEADERS`      | Custom HTTP headers for requests (comma-separated key=value pairs, e.g., X-Custom=value1,X-Auth=value2) | No       | -                | -                      |
 | `VMANOMALY_REQUEST_TIMEOUT` | HTTP timeout for calls from MCP to vmanomaly, e.g. `60s`                                             | No       | `30s`            | -                      |
+| `VMANOMALY_TLS_CA_FILE`  | PEM CA bundle added to the system trust store to verify the vmanomaly server certificate                | No       | -                | -                      |
+| `VMANOMALY_TLS_CA_CERT`  | Same as `VMANOMALY_TLS_CA_FILE`, but the PEM content itself, for runtimes without file mounts           | No       | -                | -                      |
+| `VMANOMALY_TLS_CERT_FILE` | PEM client certificate for vmanomaly servers that require mutual TLS; set together with the key file   | No       | -                | -                      |
+| `VMANOMALY_TLS_KEY_FILE` | PEM private key for `VMANOMALY_TLS_CERT_FILE`                                                           | No       | -                | -                      |
+| `VMANOMALY_TLS_INSECURE_SKIP_VERIFY` | Skip server certificate verification. **Insecure, for development and testing only**        | No       | `false`          | `false`, `true`        |
 | `MCP_SERVER_MODE`        | Server operation mode. See [Modes](#modes) for details.                                                 | No       | `stdio`          | `stdio`, `http`, `sse` |
 | `MCP_LISTEN_ADDR`        | Address for HTTP server to listen on                                                                    | No       | `localhost:8080` | -                      |
 | `MCP_ENABLED_TOOLS`      | Positive comma-separated tool allowlist; empty enables all registered tools                            | No       | -                | -                      |
@@ -148,6 +153,10 @@ MCP Server for vmanomaly is configured via environment variables:
 | `MCP_HEARTBEAT_INTERVAL` | Heartbeat interval for streamable-http protocol (keeps connection alive through network infrastructure) | No       | `30s`            | -                      |
 | `MCP_LOG_LEVEL`          | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                      | No       | `info`           | -                      |
 | `MCP_LOG_FILE`           | Log file path (empty = stderr)                                                                          | No       | `stderr`         | -                      |
+
+### Connecting to vmanomaly over HTTPS
+
+Use an `https://` URL in `VMANOMALY_ENDPOINT`. Server certificates are verified against the system trust store. For a private CA, set `VMANOMALY_TLS_CA_FILE`, or `VMANOMALY_TLS_CA_CERT` with the PEM content when the runtime cannot mount files; the CA is added to the system roots. When vmanomaly requires client certificates (mutual TLS), also set `VMANOMALY_TLS_CERT_FILE` and `VMANOMALY_TLS_KEY_FILE`. `VMANOMALY_TLS_INSECURE_SKIP_VERIFY=true` disables server certificate verification and cannot be combined with a custom CA; use it only for development or testing. Certificates are read at startup, so restart the server after rotating them.
 
 ### Modes
 

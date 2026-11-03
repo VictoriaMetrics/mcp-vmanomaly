@@ -111,6 +111,9 @@ func serve(c *config.Config, stderr io.Writer) error {
 	if !c.IsStdio() {
 		slog.Info("Starting server", "name", serverName, "version", version, "date", date)
 	}
+	if tlsConfig := c.TLSConfig(); tlsConfig != nil && tlsConfig.InsecureSkipVerify {
+		slog.Warn("TLS certificate verification for vmanomaly is disabled via VMANOMALY_TLS_INSECURE_SKIP_VERIFY")
+	}
 
 	ms := metrics.NewSet()
 	mcpServer, err := newMCPServer(c, ms, logLevel <= slog.LevelDebug)
@@ -275,6 +278,7 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 		c.CustomHeaders(),
 		c.RequestTimeout(),
 	)
+	client.SetTLSConfig(c.TLSConfig())
 	tools.RegisterTools(mcpServer, client)
 	if !c.IsResourcesDisabled() {
 		resources.RegisterPresetGuideResource(mcpServer)

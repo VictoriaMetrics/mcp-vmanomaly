@@ -3,6 +3,7 @@ package vmanomaly
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,6 +38,17 @@ func NewClientWithTimeout(baseURL, bearerToken string, customHeaders map[string]
 			Timeout: requestTimeout,
 		},
 	}
+}
+
+// SetTLSConfig sets TLS settings for calls to vmanomaly, such as a private CA
+// or a client certificate for mutual TLS. A nil config keeps the defaults.
+func (c *Client) SetTLSConfig(cfg *tls.Config) {
+	if cfg == nil {
+		return
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = cfg
+	c.httpClient.Transport = transport
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) ([]byte, error) {
