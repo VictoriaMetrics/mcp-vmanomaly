@@ -5,15 +5,22 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-11-04
+
 ### Features
 
+- Added bounded metric and label discovery and schema-validated preset configuration/alert artifacts for [dynamic presets](https://docs.victoriametrics.com/anomaly-detection/presets/#dynamic-presets). Requires vmanomaly v1.32.0+.
 - Added optional Compose, Helm and VM Operator deployment options to preset artifact generation, preserving complete backend-generated files and draft requirements. Requires vmanomaly v1.32.0+.
-
 - Added a versioned preset workflow guide, available through a read-only tool and an optional MCP resource, with guidance for discovery, sizing, missing destinations and artifact generation.
 - Added optional `required_inputs` forwarding for draft preset artifacts.
 - Added optional deployment-schedule replay to [shared autotune requests](https://docs.victoriametrics.com/anomaly-detection/components/server/#time-series-analysis-and-autotune-api), with explicit evaluation windows and preserved fold-based defaults.
 - Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
 - Added `VMANOMALY_TLS_CA_FILE`, `VMANOMALY_TLS_CA_CERT`, `VMANOMALY_TLS_CERT_FILE`, `VMANOMALY_TLS_KEY_FILE` and `VMANOMALY_TLS_INSECURE_SKIP_VERIFY` to verify vmanomaly against a private CA and to present a client certificate when vmanomaly requires mutual TLS. Skip-verify disables server certificate verification, is for development/testing only and cannot be combined with a custom CA.
+
+### Improvements
+
+- Refreshed embedded documentation for [vmanomaly v1.32.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1320) and UI v1.11.0, including dynamic presets, TLS/mTLS, Temporal Envelope v2 and state compatibility. The snapshot records its upstream revision; the model-selection guide remains link-only.
+- Updated the integration environment to vmanomaly v1.32.0.
 
 ### Security
 
@@ -192,6 +199,7 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.6.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.2...v0.5.0
 [v0.4.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.1...v0.4.2
