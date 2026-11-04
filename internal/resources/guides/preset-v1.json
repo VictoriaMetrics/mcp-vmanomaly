@@ -3,6 +3,6 @@
   "source_status": "merged",
   "source_repository": "https://github.com/VictoriaMetrics/skills",
   "source_path": "plugins/vmanomaly/skills/vmanomaly-preset/references/copilot-preset-guide-v1.md",
-  "source_revision": "62010eb4e9f7e17a61c870afa45ac9b0a6ac7647",
-  "sha256": "639018fd46d62a5973e1f2c326189f42aa97d68dac06de0876e0560997f4df32"
+  "source_revision": "f5c4d60abbd0e19a293277e869fa40aa7e423d21",
+  "sha256": "e1acc673992d3b5c2fe38b3140232bbbd6c4d7895dbf8de4524193d9905bc4f5"
 }
