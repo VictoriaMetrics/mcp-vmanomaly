@@ -377,6 +377,10 @@ func (c *Client) TimeseriesCharacteristics(ctx context.Context, req *TimeseriesC
 }
 
 func (c *Client) CreateAutotuneTask(ctx context.Context, req *AutotuneTaskRequest) (*AutotuneTaskResponse, error) {
+	if err := validateAutotuneReplay(req); err != nil {
+		return nil, err
+	}
+
 	respBody, err := c.doRequest(ctx, http.MethodPost, "/api/v1/autotune/tasks", req)
 	if err != nil {
 		return nil, err
