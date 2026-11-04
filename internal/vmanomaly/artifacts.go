@@ -16,6 +16,7 @@ const (
 
 // ArtifactRequest carries a complete runtime configuration; generation does not deploy it.
 type ArtifactRequest struct {
+	Deployment     *DeploymentOptions   `json:"deployment,omitempty"`
 	RequiredInputs []string             `json:"required_inputs,omitempty"`
 	Config         map[string]any       `json:"config"`
 	Alerts         *ArtifactAlertPolicy `json:"alerts,omitempty"`
@@ -54,4 +55,29 @@ func (c *Client) GenerateArtifacts(ctx context.Context, request ArtifactRequest)
 		return nil, fmt.Errorf("artifact server returned invalid JSON")
 	}
 	return data, nil
+}
+
+// DeploymentOptions selects a bounded server-owned adapter; no local rendering or deployment occurs.
+type DeploymentOptions struct {
+	Targets         []string             `json:"targets"`
+	Storage         string               `json:"storage"`
+	Image           string               `json:"image"`
+	Name            string               `json:"name,omitempty"`
+	Namespace       string               `json:"namespace,omitempty"`
+	ChartVersion    string               `json:"chart_version,omitempty"`
+	OperatorVersion string               `json:"operator_version,omitempty"`
+	LicenseSecret   string               `json:"license_secret,omitempty"`
+	VolumeSize      string               `json:"volume_size,omitempty"`
+	StorageClass    string               `json:"storage_class,omitempty"`
+	Resources       *DeploymentResources `json:"resources,omitempty"`
+}
+
+type DeploymentResources struct {
+	Requests *ResourceValues `json:"requests,omitempty"`
+	Limits   *ResourceValues `json:"limits,omitempty"`
+}
+
+type ResourceValues struct {
+	CPU    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
 }

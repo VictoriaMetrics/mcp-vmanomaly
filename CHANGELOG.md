@@ -7,6 +7,8 @@ published as the corresponding GitHub release notes.
 
 ### Features
 
+- Added optional Compose, Helm and VM Operator deployment options to preset artifact generation, preserving complete backend-generated files and draft requirements. Requires vmanomaly v1.32.0+.
+
 - Added a versioned preset workflow guide, available through a read-only tool and an optional MCP resource, with guidance for discovery, sizing, missing destinations and artifact generation.
 - Added optional `required_inputs` forwarding for draft preset artifacts.
 - Added optional deployment-schedule replay to [shared autotune requests](https://docs.victoriametrics.com/anomaly-detection/components/server/#time-series-analysis-and-autotune-api), with explicit evaluation windows and preserved fold-based defaults.

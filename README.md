@@ -31,6 +31,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.30.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1300)+ for time-series characteristics and task-based shared autotune
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
   - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for schedule replay in shared autotune, experimental peer-group tuning and deployment sizing
+  - version 1.32.0+ for preset deployment artifacts (Compose, Helm and VM Operator)
 - Go 1.26.10 or higher (if building from source)
 
 ## Installation
@@ -461,6 +462,9 @@ MCP vmanomaly provides tools organized into categories:
 #### Preset configuration and alert artifacts
 
 `vmanomaly_generate_preset_artifacts` calls the additive `POST /api/v1/preset/artifacts` API. It is not part of the vmanomaly 1.31.0 baseline: check endpoint support and treat 404 as unsupported. Supply a complete configuration with explicit reader and VictoriaMetrics writer destinations, models and schedulers. Optional alert policy controls threshold, evaluation interval, persistence and the externally reachable incident base URL. `entity_labels` contains only known source labels; omit it for query-group links. Results retain structured configuration/rules, equivalent YAML, schema version and warnings. The request is limited to 1 MiB and the response to 8 MiB.
+
+With vmanomaly v1.32.0+, optional `deployment` selects `targets` (`compose`, `helm`, `operator`), `storage` (`memory` or `persistent`) and an explicit released `image` tag. Include known choices in the first generation call to receive the complete bundle once. The backend owns validation and rendering; MCP preserves the returned files, per-file requirements and warnings without rewriting them. Helm uses pinned chart 1.12.19; Operator uses v0.75.2 and supports persistent storage only. Missing license or volume details use backend-generated draft requirements; request-level `required_inputs` remains restricted to the two writer fields. Generation does not install anything or verify a live deployment.
+
 
 Generation is read-only. `schema-valid` does not establish data coverage, sizing, connectivity, alert delivery or deployment readiness. The existing configuration and example-rule tools remain available; a successful validation response describes schema validation only. Use separate rendering and live checks before deployment.
 

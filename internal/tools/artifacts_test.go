@@ -156,6 +156,14 @@ func TestArtifactSchemaNumericBounds(t *testing.T) {
 	if err := json.Unmarshal(data, &tool); err != nil {
 		t.Fatal(err)
 	}
+	targets := tool.InputSchema.Properties["deployment"].Properties["targets"]
+	items, ok := targets["items"].(map[string]any)
+	if !ok || !reflect.DeepEqual(items["enum"], []any{"compose", "helm", "operator"}) {
+		t.Fatalf("deployment targets must enumerate supported array items: %v", targets)
+	}
+	if _, ok := targets["enum"]; ok {
+		t.Fatal("deployment target enum must constrain items, not the array")
+	}
 	alerts := tool.InputSchema.Properties["alerts"]
 	if len(alerts.Required) != 0 {
 		t.Fatalf("alert fields must remain optional: %v", alerts.Required)
@@ -186,5 +194,43 @@ func TestArtifactRejectsUnknownRequiredInputBeforeDispatch(t *testing.T) {
 	result, err := s.GetTool("vmanomaly_generate_preset_artifacts").Handler(context.Background(), request)
 	if err != nil || !result.IsError {
 		t.Fatalf("expected local validation error: %v %v", result, err)
+	}
+}
+
+func TestArtifactToolForwardsDeploymentWithoutRewritingFiles(t *testing.T) {
+	for _, target := range []string{"compose", "helm", "operator"} {
+		t.Run(target, func(t *testing.T) {
+			deployment := map[string]any{
+				"targets": []any{target}, "storage": "persistent", "image": "victoriametrics/vmanomaly:v1.32.0",
+				"name": "preset", "namespace": "monitoring", "chart_version": "1.12.19", "operator_version": "v0.75.2",
+				"license_secret": "existing-license", "volume_size": "10Gi", "storage_class": "existing-class",
+				"resources": map[string]any{"requests": map[string]any{"cpu": "500m", "memory": "1Gi"}, "limits": map[string]any{"cpu": "2", "memory": "2Gi"}},
+			}
+			const response = `{"files":[{"name":"values.yaml","content":"# DRAFT\nconfig: {}\n","validation":"rendered-not-live-validated","required_inputs":[{"field":"deployment.volume_size","instruction":"Confirm capacity"}]}],"warnings":["Not live tested"]}`
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var got map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+					t.Error(err)
+					return
+				}
+				if !reflect.DeepEqual(got["deployment"], deployment) {
+					t.Errorf("deployment changed: got %#v; want %#v", got["deployment"], deployment)
+				}
+				_, _ = w.Write([]byte(response))
+			}))
+			defer upstream.Close()
+			s := server.NewMCPServer("test", "1")
+			RegisterArtifactTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
+			var request mcp.CallToolRequest
+			request.Params.Arguments = map[string]any{"config": map[string]any{}, "deployment": deployment}
+			result, err := s.GetTool("vmanomaly_generate_preset_artifacts").Handler(context.Background(), request)
+			if err != nil || result.IsError {
+				t.Fatalf("%v %v", result, err)
+			}
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || string(data) != response {
+				t.Fatalf("artifact response changed: %s %v", data, err)
+			}
+		})
 	}
 }
