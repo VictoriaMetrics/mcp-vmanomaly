@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/config"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/resources"
 )
 
 func testConfig(t *testing.T, enabledTools, disabledTools string, disableResources bool) *config.Config {
@@ -161,5 +162,25 @@ func TestHooksDoNotExposeClientOrToolArguments(t *testing.T) {
 	}
 	if strings.Contains(logOutput.String(), secret) {
 		t.Fatalf("secret leaked into logs: %s", logOutput.String())
+	}
+}
+
+func TestPresetGuideToolWorksWithResourcesDisabled(t *testing.T) {
+	cfg := testConfig(t, "vmanomaly_get_preset_guide", "", true)
+	s, err := newMCPServer(cfg, metrics.NewSet(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := handleMessage(t, s, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"vmanomaly_get_preset_guide","arguments":{}}}`)
+	if response["error"] != nil {
+		t.Fatalf("guide retrieval failed: %v", response)
+	}
+	result, ok := response["result"].(map[string]any)
+	if !ok || result["isError"] == true {
+		t.Fatalf("guide retrieval was not successful: %v", response)
+	}
+	content, ok := result["structuredContent"].(map[string]any)
+	if !ok || content["uri"] != resources.PresetGuideURI || content["guide"] == "" || content["guide"] == nil {
+		t.Fatalf("missing guide content: %v", result)
 	}
 }

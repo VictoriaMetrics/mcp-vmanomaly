@@ -63,6 +63,9 @@ func TestArtifactArgsPreserveOmittedAndExplicitValues(t *testing.T) {
 				}
 				expected := map[string]any{"config": config}
 				if alerts != nil {
+					expected["required_inputs"] = []any{"writer.tenant_id"}
+				}
+				if alerts != nil {
 					expected["alerts"] = alerts
 				}
 				if !reflect.DeepEqual(got, expected) {
@@ -77,6 +80,9 @@ func TestArtifactArgsPreserveOmittedAndExplicitValues(t *testing.T) {
 			RegisterArtifactTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
 			var request mcp.CallToolRequest
 			request.Params.Arguments = map[string]any{"config": config}
+			if alerts != nil {
+				request.Params.Arguments.(map[string]any)["required_inputs"] = []string{"writer.tenant_id"}
+			}
 			if alerts != nil {
 				request.Params.Arguments.(map[string]any)["alerts"] = alerts
 			}
@@ -125,7 +131,7 @@ func TestArtifactSchemaDescribesInputs(t *testing.T) {
 		}
 	}
 	visit(schema)
-	for _, name := range []string{"config", "alerts", "threshold", "evaluation_seconds", "persistence_seconds", "incident_base_url", "entity_labels"} {
+	for _, name := range []string{"config", "required_inputs", "alerts", "threshold", "evaluation_seconds", "persistence_seconds", "incident_base_url", "entity_labels"} {
 		if descriptions[name] == "" {
 			t.Errorf("missing description for %s", name)
 		}
@@ -167,5 +173,18 @@ func TestArtifactSchemaNumericBounds(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestArtifactRejectsUnknownRequiredInputBeforeDispatch(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("invalid draft request reached backend") }))
+	defer upstream.Close()
+	s := server.NewMCPServer("test", "1")
+	RegisterArtifactTools(s, vmanomaly.NewClient(upstream.URL, "", nil))
+	var request mcp.CallToolRequest
+	request.Params.Arguments = map[string]any{"config": map[string]any{}, "required_inputs": []string{"reader.tenant_id"}}
+	result, err := s.GetTool("vmanomaly_generate_preset_artifacts").Handler(context.Background(), request)
+	if err != nil || !result.IsError {
+		t.Fatalf("expected local validation error: %v %v", result, err)
 	}
 }

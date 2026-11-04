@@ -10,8 +10,9 @@ import (
 
 // ArtifactArgs is the MCP contract; the client request remains independent.
 type ArtifactArgs struct {
-	Config map[string]any     `json:"config" jsonschema:"required" jsonschema_description:"Complete configuration including explicit reader, writer, models and schedulers. Use secret references rather than inline credentials."`
-	Alerts *ArtifactAlertArgs `json:"alerts,omitempty" jsonschema_description:"Optional alert policy. Omit to use backend defaults; generation does not deploy rules or test notification delivery."`
+	RequiredInputs []string           `json:"required_inputs,omitempty" jsonschema_description:"Unresolved draft fields: writer.datasource_url and/or writer.tenant_id. Use http://replace-me.invalid:8428 for an unknown writer URL and never probe it. The backend returns a required-input checklist and deployment_ready=false; draft files are not ready to deploy."`
+	Config         map[string]any     `json:"config" jsonschema:"required" jsonschema_description:"Complete configuration including explicit reader, writer, models and schedulers. Use secret references rather than inline credentials."`
+	Alerts         *ArtifactAlertArgs `json:"alerts,omitempty" jsonschema_description:"Optional alert policy. Omit to use backend defaults; generation does not deploy rules or test notification delivery."`
 }
 
 // ArtifactAlertArgs preserves omitted numeric fields so backend defaults apply.
@@ -33,7 +34,7 @@ func RegisterArtifactTools(s *server.MCPServer, client *vmanomaly.Client) {
 
 func handleGenerateArtifacts(client *vmanomaly.Client) func(context.Context, mcp.CallToolRequest, ArtifactArgs) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, req mcp.CallToolRequest, args ArtifactArgs) (*mcp.CallToolResult, error) {
-		request := vmanomaly.ArtifactRequest{Config: args.Config}
+		request := vmanomaly.ArtifactRequest{Config: args.Config, RequiredInputs: args.RequiredInputs}
 		if args.Alerts != nil {
 			request.Alerts = &vmanomaly.ArtifactAlertPolicy{
 				EntityLabels:       args.Alerts.EntityLabels,

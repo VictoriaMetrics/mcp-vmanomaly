@@ -16,8 +16,9 @@ const (
 
 // ArtifactRequest carries a complete runtime configuration; generation does not deploy it.
 type ArtifactRequest struct {
-	Config map[string]any       `json:"config"`
-	Alerts *ArtifactAlertPolicy `json:"alerts,omitempty"`
+	RequiredInputs []string             `json:"required_inputs,omitempty"`
+	Config         map[string]any       `json:"config"`
+	Alerts         *ArtifactAlertPolicy `json:"alerts,omitempty"`
 }
 
 type ArtifactAlertPolicy struct {
@@ -31,6 +32,11 @@ type ArtifactAlertPolicy struct {
 func (c *Client) GenerateArtifacts(ctx context.Context, request ArtifactRequest) (json.RawMessage, error) {
 	if request.Config == nil {
 		return nil, fmt.Errorf("config is required")
+	}
+	for _, field := range request.RequiredInputs {
+		if field != "writer.datasource_url" && field != "writer.tenant_id" {
+			return nil, fmt.Errorf("unsupported required input: %q", field)
+		}
 	}
 	body, err := json.Marshal(request)
 	if err != nil {
