@@ -28,7 +28,8 @@ func TestPresetGuideSnapshotAndResource(t *testing.T) {
 		t.Fatal("missing canonical source provenance")
 	}
 	// Keep the on-demand guide compact enough for a single bounded context insertion.
-	const maxGuideBytes = 12 * 1024
+	// Allow the deployment/retention decision flow while keeping retrieval bounded.
+	const maxGuideBytes = 16 * 1024
 	if len(presetGuideText) == 0 || len(presetGuideText) > maxGuideBytes {
 		t.Fatalf("unexpected guide size: %d", len(presetGuideText))
 	}
