@@ -141,7 +141,7 @@ MCP Server for vmanomaly is configured via environment variables:
 | `VMANOMALY_HEADERS`      | Custom HTTP headers for requests (comma-separated key=value pairs, e.g., X-Custom=value1,X-Auth=value2) | No       | -                | -                      |
 | `VMANOMALY_REQUEST_TIMEOUT` | HTTP timeout for calls from MCP to vmanomaly, e.g. `60s`                                             | No       | `30s`            | -                      |
 | `VMANOMALY_TLS_CA_FILE`  | PEM CA bundle added to the system trust store to verify the vmanomaly server certificate                | No       | -                | -                      |
-| `VMANOMALY_TLS_CA_CERT`  | Same as `VMANOMALY_TLS_CA_FILE`, but the PEM content itself, for runtimes without file mounts           | No       | -                | -                      |
+| `VMANOMALY_TLS_CA_CERT`  | Same as `VMANOMALY_TLS_CA_FILE`, but the PEM content itself, for runtimes without file mounts; mutually exclusive with `VMANOMALY_TLS_CA_FILE`           | No       | -                | -                      |
 | `VMANOMALY_TLS_CERT_FILE` | PEM client certificate for vmanomaly servers that require mutual TLS; set together with the key file   | No       | -                | -                      |
 | `VMANOMALY_TLS_KEY_FILE` | PEM private key for `VMANOMALY_TLS_CERT_FILE`                                                           | No       | -                | -                      |
 | `VMANOMALY_TLS_INSECURE_SKIP_VERIFY` | Skip server certificate verification. **Insecure, for development and testing only**        | No       | `false`          | `false`, `true`        |

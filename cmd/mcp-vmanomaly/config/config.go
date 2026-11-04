@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -135,6 +136,13 @@ func InitConfig() (*Config, error) {
 		return nil, fmt.Errorf("VMANOMALY_ENDPOINT is required")
 	}
 
+	if tlsConfig != nil {
+		endpoint, err := url.Parse(result.vmanomalyEndpoint)
+		if err != nil || endpoint.Scheme != "https" {
+			return nil, fmt.Errorf("TLS settings require an https VMANOMALY_ENDPOINT")
+		}
+	}
+
 	// Validate server mode
 	if result.serverMode != "" && result.serverMode != "stdio" && result.serverMode != "sse" && result.serverMode != "http" {
 		return nil, fmt.Errorf("MCP_SERVER_MODE must be 'stdio', 'sse' or 'http'")
@@ -221,7 +229,7 @@ func readTLSConfig() (*tls.Config, error) {
 		}
 		caPEM, caSource = data, "VMANOMALY_TLS_CA_FILE"
 	}
-	if len(caPEM) > 0 {
+	if caFile != "" || caCert != "" {
 		// extend the system roots, as -tlsCAFile does in VictoriaMetrics components
 		pool, err := x509.SystemCertPool()
 		if err != nil {

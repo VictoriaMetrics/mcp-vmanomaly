@@ -602,8 +602,13 @@ func TestTLSConfigRejectsInvalidSettings(t *testing.T) {
 	if err := os.WriteFile(notPEM, []byte("not a certificate"), 0600); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
+	emptyCA := filepath.Join(t.TempDir(), "empty.pem")
+	if err := os.WriteFile(emptyCA, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
 	// CA file, certificate, key, inline CA, skip verify
 	cases := map[string][5]string{
+		"empty CA file":             {emptyCA, "", "", "", ""},
 		"certificate without key":   {"", pki.ClientCert, "", "", ""},
 		"key without certificate":   {"", "", pki.ClientKey, "", ""},
 		"missing CA file":           {filepath.Join(t.TempDir(), "missing.pem"), "", "", "", ""},
@@ -624,5 +629,18 @@ func TestTLSConfigRejectsInvalidSettings(t *testing.T) {
 				t.Fatal("expected an error")
 			}
 		})
+	}
+}
+
+func TestTLSConfigRejectsHTTP(t *testing.T) {
+	setTLSEnv(t, "", "", "")
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "true")
+	if _, err := InitConfig(); err == nil {
+		t.Fatal("expected HTTPS requirement")
+	}
+	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "false")
+	if _, err := InitConfig(); err != nil {
+		t.Fatalf("HTTP without active TLS settings: %v", err)
 	}
 }

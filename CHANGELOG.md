@@ -11,7 +11,7 @@ published as the corresponding GitHub release notes.
 - Added optional `required_inputs` forwarding for draft preset artifacts.
 - Added optional deployment-schedule replay to [shared autotune requests](https://docs.victoriametrics.com/anomaly-detection/components/server/#time-series-analysis-and-autotune-api), with explicit evaluation windows and preserved fold-based defaults.
 - Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
-- Added `VMANOMALY_TLS_CA_FILE`, `VMANOMALY_TLS_CA_CERT`, `VMANOMALY_TLS_CERT_FILE`, `VMANOMALY_TLS_KEY_FILE` and `VMANOMALY_TLS_INSECURE_SKIP_VERIFY` to verify vmanomaly against a private CA and to present a client certificate when vmanomaly requires mutual TLS.
+- Added `VMANOMALY_TLS_CA_FILE`, `VMANOMALY_TLS_CA_CERT`, `VMANOMALY_TLS_CERT_FILE`, `VMANOMALY_TLS_KEY_FILE` and `VMANOMALY_TLS_INSECURE_SKIP_VERIFY` to verify vmanomaly against a private CA and to present a client certificate when vmanomaly requires mutual TLS. Skip-verify disables server certificate verification, is for development/testing only and cannot be combined with a custom CA.
 
 ### Security
 

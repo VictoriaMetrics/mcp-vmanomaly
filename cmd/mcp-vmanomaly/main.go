@@ -278,7 +278,9 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 		c.CustomHeaders(),
 		c.RequestTimeout(),
 	)
-	client.SetTLSConfig(c.TLSConfig())
+	if err := client.SetTLSConfig(c.TLSConfig()); err != nil {
+		return nil, err
+	}
 	tools.RegisterTools(mcpServer, client)
 	if !c.IsResourcesDisabled() {
 		resources.RegisterPresetGuideResource(mcpServer)

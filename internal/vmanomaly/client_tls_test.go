@@ -25,7 +25,9 @@ func TestClientMutualTLS(t *testing.T) {
 
 	// trusting the CA is not enough without a client certificate
 	client := NewClient(server.URL, "", nil)
-	client.SetTLSConfig(&tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12})
+	if err := client.SetTLSConfig(&tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := client.GetHealth(context.Background()); err == nil {
 		t.Fatal("expected handshake failure without a client certificate")
 	}
@@ -35,7 +37,9 @@ func TestClientMutualTLS(t *testing.T) {
 		t.Fatalf("failed to load client certificate: %v", err)
 	}
 	client = NewClient(server.URL, "", nil)
-	client.SetTLSConfig(&tls.Config{RootCAs: roots, Certificates: []tls.Certificate{clientCert}, MinVersion: tls.VersionTLS12})
+	if err := client.SetTLSConfig(&tls.Config{RootCAs: roots, Certificates: []tls.Certificate{clientCert}, MinVersion: tls.VersionTLS12}); err != nil {
+		t.Fatal(err)
+	}
 	health, err := client.GetHealth(context.Background())
 	if err != nil {
 		t.Fatalf("GetHealth failed: %v", err)
@@ -45,8 +49,29 @@ func TestClientMutualTLS(t *testing.T) {
 
 func TestSetTLSConfigNilKeepsDefaults(t *testing.T) {
 	client := NewClient("https://localhost:8490", "", nil)
-	client.SetTLSConfig(nil)
+	if err := client.SetTLSConfig(nil); err != nil {
+		t.Fatal(err)
+	}
 	if client.httpClient.Transport != nil {
 		t.Fatal("expected the default transport")
 	}
+}
+
+func TestSetTLSConfigRejectsCustomTransport(t *testing.T) {
+	original := http.DefaultTransport
+	t.Cleanup(func() { http.DefaultTransport = original })
+	http.DefaultTransport = customTLSTransport{}
+	client := NewClient("https://localhost:8490", "", nil)
+	if err := client.SetTLSConfig(&tls.Config{MinVersion: tls.VersionTLS12}); err == nil {
+		t.Fatal("expected unsupported transport error")
+	}
+	if client.httpClient.Transport != nil {
+		t.Fatal("client transport changed after error")
+	}
+}
+
+type customTLSTransport struct{}
+
+func (customTLSTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	panic("unexpected request")
 }

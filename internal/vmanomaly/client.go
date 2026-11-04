@@ -42,13 +42,18 @@ func NewClientWithTimeout(baseURL, bearerToken string, customHeaders map[string]
 
 // SetTLSConfig sets TLS settings for calls to vmanomaly, such as a private CA
 // or a client certificate for mutual TLS. A nil config keeps the defaults.
-func (c *Client) SetTLSConfig(cfg *tls.Config) {
+func (c *Client) SetTLSConfig(cfg *tls.Config) error {
 	if cfg == nil {
-		return
+		return nil
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok || base == nil {
+		return fmt.Errorf("cannot configure TLS: default HTTP transport is not *http.Transport")
+	}
+	transport := base.Clone()
 	transport.TLSClientConfig = cfg
 	c.httpClient.Transport = transport
+	return nil
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) ([]byte, error) {
