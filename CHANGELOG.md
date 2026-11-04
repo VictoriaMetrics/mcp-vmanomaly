@@ -17,6 +17,11 @@ published as the corresponding GitHub release notes.
 - Added optional `wait_seconds` (0–10) for autotune status retrieval; waits are cancellable and return the latest status without recreating tasks. Immediate retrieval remains the default.
 - Added `VMANOMALY_TLS_CA_FILE`, `VMANOMALY_TLS_CA_CERT`, `VMANOMALY_TLS_CERT_FILE`, `VMANOMALY_TLS_KEY_FILE` and `VMANOMALY_TLS_INSECURE_SKIP_VERIFY` to verify vmanomaly against a private CA and to present a client certificate when vmanomaly requires mutual TLS. Skip-verify disables server certificate verification, is for development/testing only and cannot be combined with a custom CA.
 
+### Improvements
+
+- Refreshed embedded documentation for [vmanomaly v1.32.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1320) and UI v1.11.0, including dynamic presets, TLS/mTLS, Temporal Envelope v2 and state compatibility. The snapshot records its upstream revision; the model-selection guide remains link-only.
+- Updated the integration environment to vmanomaly v1.32.0.
+
 ### Security
 
 - Updated the Go build toolchain to 1.26.10 to address [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) in certificate verification.
