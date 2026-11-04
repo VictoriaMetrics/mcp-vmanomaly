@@ -156,6 +156,14 @@ func TestArtifactSchemaNumericBounds(t *testing.T) {
 	if err := json.Unmarshal(data, &tool); err != nil {
 		t.Fatal(err)
 	}
+	targets := tool.InputSchema.Properties["deployment"].Properties["targets"]
+	items, ok := targets["items"].(map[string]any)
+	if !ok || !reflect.DeepEqual(items["enum"], []any{"compose", "helm", "operator"}) {
+		t.Fatalf("deployment targets must enumerate supported array items: %v", targets)
+	}
+	if _, ok := targets["enum"]; ok {
+		t.Fatal("deployment target enum must constrain items, not the array")
+	}
 	alerts := tool.InputSchema.Properties["alerts"]
 	if len(alerts.Required) != 0 {
 		t.Fatalf("alert fields must remain optional: %v", alerts.Required)

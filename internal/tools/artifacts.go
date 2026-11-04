@@ -58,7 +58,7 @@ func handleGenerateArtifacts(client *vmanomaly.Client) func(context.Context, mcp
 
 // DeploymentArgs describes the additive backend contract to the assistant.
 type DeploymentArgs struct {
-	Targets         []string                `json:"targets" jsonschema:"required,minItems=1,maxItems=3" jsonschema_description:"Choose compose, helm or operator. Generate alternatives only when explicitly requested; otherwise use one target."`
+	Targets         []string                `json:"targets" jsonschema:"required,minItems=1,maxItems=3,enum=compose,enum=helm,enum=operator" jsonschema_description:"Choose compose, helm or operator. Generate alternatives only when explicitly requested; otherwise use one target."`
 	Storage         string                  `json:"storage" jsonschema:"required,enum=memory,enum=persistent" jsonschema_description:"Persistent state is recommended when durable storage exists; memory starts fresh on restart. Operator v0.75.2 supports persistent only in this adapter because it injects disk-mode environment settings."`
 	Image           string                  `json:"image" jsonschema:"required" jsonschema_description:"Explicit released vmanomaly image with a tag, e.g. victoriametrics/vmanomaly:v1.32.0. Never use latest."`
 	Name            string                  `json:"name,omitempty" jsonschema_description:"Deployment DNS name; defaults to vmanomaly."`
