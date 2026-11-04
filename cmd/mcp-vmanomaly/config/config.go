@@ -1,7 +1,10 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -21,6 +24,7 @@ type Config struct {
 	bearerToken       string
 	customHeaders     map[string]string
 	requestTimeout    time.Duration
+	tlsConfig         *tls.Config
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -106,6 +110,11 @@ func InitConfig() (*Config, error) {
 		requestTimeout = timeout
 	}
 
+	tlsConfig, err := readTLSConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	result := &Config{
 		vmanomalyEndpoint: os.Getenv("VMANOMALY_ENDPOINT"),
 		serverMode:        strings.ToLower(os.Getenv("MCP_SERVER_MODE")),
@@ -119,11 +128,19 @@ func InitConfig() (*Config, error) {
 		bearerToken:       bearerToken,
 		customHeaders:     customHeadersMap,
 		requestTimeout:    requestTimeout,
+		tlsConfig:         tlsConfig,
 	}
 
 	// Validate required config
 	if result.vmanomalyEndpoint == "" {
 		return nil, fmt.Errorf("VMANOMALY_ENDPOINT is required")
+	}
+
+	if tlsConfig != nil {
+		endpoint, err := url.Parse(result.vmanomalyEndpoint)
+		if err != nil || endpoint.Scheme != "https" {
+			return nil, fmt.Errorf("TLS settings require an https VMANOMALY_ENDPOINT")
+		}
 	}
 
 	// Validate server mode
@@ -169,6 +186,68 @@ func readBearerToken() (string, error) {
 		return "", fmt.Errorf("VMANOMALY_BEARER_TOKEN_FILE is empty")
 	}
 	return token, nil
+}
+
+// readTLSConfig builds the TLS settings for calls to vmanomaly.
+// It returns nil when no TLS variables are set, keeping the system trust store.
+func readTLSConfig() (*tls.Config, error) {
+	caFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_FILE"))
+	caCert := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_CERT"))
+	certFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE"))
+	keyFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE"))
+	insecureSkipVerify := false
+	if v := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY")); v != "" {
+		parsed, err := strconv.ParseBool(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse VMANOMALY_TLS_INSECURE_SKIP_VERIFY: %w", err)
+		}
+		insecureSkipVerify = parsed
+	}
+	if caFile == "" && caCert == "" && certFile == "" && keyFile == "" && !insecureSkipVerify {
+		return nil, nil
+	}
+	if caFile != "" && caCert != "" {
+		return nil, fmt.Errorf("VMANOMALY_TLS_CA_FILE and VMANOMALY_TLS_CA_CERT are mutually exclusive")
+	}
+	if insecureSkipVerify && (caFile != "" || caCert != "") {
+		// InsecureSkipVerify silently ignores RootCAs
+		return nil, fmt.Errorf("VMANOMALY_TLS_INSECURE_SKIP_VERIFY cannot be combined with a custom CA")
+	}
+	if (certFile == "") != (keyFile == "") {
+		return nil, fmt.Errorf("VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE must be set together")
+	}
+
+	cfg := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // opt-in via VMANOMALY_TLS_INSECURE_SKIP_VERIFY
+	}
+	caPEM, caSource := []byte(caCert), "VMANOMALY_TLS_CA_CERT"
+	if caFile != "" {
+		data, err := os.ReadFile(caFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read VMANOMALY_TLS_CA_FILE: %w", err)
+		}
+		caPEM, caSource = data, "VMANOMALY_TLS_CA_FILE"
+	}
+	if caFile != "" || caCert != "" {
+		// extend the system roots, as -tlsCAFile does in VictoriaMetrics components
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load system certificate pool: %w", err)
+		}
+		if !pool.AppendCertsFromPEM(caPEM) {
+			return nil, fmt.Errorf("%s contains no PEM certificates", caSource)
+		}
+		cfg.RootCAs = pool
+	}
+	if certFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE: %w", err)
+		}
+		cfg.Certificates = []tls.Certificate{cert}
+	}
+	return cfg, nil
 }
 
 func (c *Config) VmanomalyEndpoint() string {
@@ -238,4 +317,9 @@ func (c *Config) CustomHeaders() map[string]string {
 
 func (c *Config) RequestTimeout() time.Duration {
 	return c.requestTimeout
+}
+
+// TLSConfig returns TLS settings for calls to vmanomaly, or nil to use the defaults.
+func (c *Config) TLSConfig() *tls.Config {
+	return c.tlsConfig
 }

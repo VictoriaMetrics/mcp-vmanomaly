@@ -1,10 +1,14 @@
 package config
 
 import (
+	"crypto/x509"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/testtls"
 )
 
 func TestInitConfig(t *testing.T) {
@@ -484,5 +488,159 @@ func TestBearerTokenSourcesAreMutuallyExclusive(t *testing.T) {
 
 	if _, err := InitConfig(); err == nil {
 		t.Fatal("expected mutually exclusive bearer-token source error")
+	}
+}
+
+func setTLSEnv(t *testing.T, caFile, certFile, keyFile string) {
+	t.Helper()
+	t.Setenv("VMANOMALY_ENDPOINT", "https://127.0.0.1:8490")
+	t.Setenv("VMANOMALY_TLS_CA_FILE", caFile)
+	t.Setenv("VMANOMALY_TLS_CERT_FILE", certFile)
+	t.Setenv("VMANOMALY_TLS_KEY_FILE", keyFile)
+	t.Setenv("VMANOMALY_TLS_CA_CERT", "")
+	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "")
+}
+
+func requestStatus(t *testing.T, cfg *Config, url string) int {
+	t.Helper()
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: cfg.TLSConfig()}}
+	resp, err := client.Get(url)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode
+}
+
+func TestTLSConfigUnsetKeepsDefaults(t *testing.T) {
+	setTLSEnv(t, "", "", "")
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if cfg.TLSConfig() != nil {
+		t.Fatal("expected no TLS config")
+	}
+}
+
+func TestTLSConfigCompletesMutualTLS(t *testing.T) {
+	server, pki := testtls.NewMTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	setTLSEnv(t, pki.CAFile, pki.ClientCert, pki.ClientKey)
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+
+	if status := requestStatus(t, cfg, server.URL); status != http.StatusOK {
+		t.Fatalf("unexpected status %d", status)
+	}
+}
+
+func TestTLSConfigInlineCACompletesMutualTLS(t *testing.T) {
+	server, pki := testtls.NewMTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	caPEM, err := os.ReadFile(pki.CAFile)
+	if err != nil {
+		t.Fatalf("failed to read CA: %v", err)
+	}
+	setTLSEnv(t, "", pki.ClientCert, pki.ClientKey)
+	t.Setenv("VMANOMALY_TLS_CA_CERT", string(caPEM))
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if status := requestStatus(t, cfg, server.URL); status != http.StatusOK {
+		t.Fatalf("unexpected status %d", status)
+	}
+}
+
+func TestTLSConfigInsecureSkipVerify(t *testing.T) {
+	server, pki := testtls.NewMTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	setTLSEnv(t, "", pki.ClientCert, pki.ClientKey)
+	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "true")
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if status := requestStatus(t, cfg, server.URL); status != http.StatusOK {
+		t.Fatalf("unexpected status %d", status)
+	}
+}
+
+func TestTLSConfigCAOnly(t *testing.T) {
+	pki := testtls.WritePKI(t, t.TempDir())
+	setTLSEnv(t, pki.CAFile, "", "")
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if len(cfg.TLSConfig().Certificates) != 0 {
+		t.Fatal("expected no client certificate")
+	}
+	caPEM, err := os.ReadFile(pki.CAFile)
+	if err != nil {
+		t.Fatalf("failed to read CA: %v", err)
+	}
+	expected, err := x509.SystemCertPool()
+	if err != nil {
+		t.Fatalf("failed to load system pool: %v", err)
+	}
+	expected.AppendCertsFromPEM(caPEM)
+	if !cfg.TLSConfig().RootCAs.Equal(expected) {
+		t.Fatal("expected the CA to extend the system roots")
+	}
+}
+
+func TestTLSConfigRejectsInvalidSettings(t *testing.T) {
+	pki := testtls.WritePKI(t, t.TempDir())
+	notPEM := filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(notPEM, []byte("not a certificate"), 0600); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	emptyCA := filepath.Join(t.TempDir(), "empty.pem")
+	if err := os.WriteFile(emptyCA, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// CA file, certificate, key, inline CA, skip verify
+	cases := map[string][5]string{
+		"empty CA file":             {emptyCA, "", "", "", ""},
+		"certificate without key":   {"", pki.ClientCert, "", "", ""},
+		"key without certificate":   {"", "", pki.ClientKey, "", ""},
+		"missing CA file":           {filepath.Join(t.TempDir(), "missing.pem"), "", "", "", ""},
+		"CA file without PEM":       {notPEM, "", "", "", ""},
+		"mismatched key":            {"", pki.ClientCert, pki.ServerKey, "", ""},
+		"inline CA without PEM":     {"", "", "", "not a certificate", ""},
+		"CA file and inline CA":     {pki.CAFile, "", "", "not used", ""},
+		"skip verify with CA":       {pki.CAFile, "", "", "", "true"},
+		"skip verify with inline":   {"", "", "", "not used", "true"},
+		"skip verify not a boolean": {"", "", "", "", "sometimes"},
+	}
+	for name, env := range cases {
+		t.Run(name, func(t *testing.T) {
+			setTLSEnv(t, env[0], env[1], env[2])
+			t.Setenv("VMANOMALY_TLS_CA_CERT", env[3])
+			t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", env[4])
+			if _, err := InitConfig(); err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+	}
+}
+
+func TestTLSConfigRejectsHTTP(t *testing.T) {
+	setTLSEnv(t, "", "", "")
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "true")
+	if _, err := InitConfig(); err == nil {
+		t.Fatal("expected HTTPS requirement")
+	}
+	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "false")
+	if _, err := InitConfig(); err != nil {
+		t.Fatalf("HTTP without active TLS settings: %v", err)
 	}
 }
