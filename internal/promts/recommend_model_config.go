@@ -93,7 +93,7 @@ const contextMessage = `Use measured profiles, user anomaly expectations, and th
 - Use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. Use one shared multivariate autotune task with the named queries and their policies, plus frozen_params.groupby when grouping is needed.
 - A joint-score multivariate model remains many-to-one when it emits per-channel y, forecast, or bound diagnostics. Model topology describes service routing and identity, not auxiliary output width; account for those series in writer cardinality planning.
 - On v1.31.0+ servers exposing peer_outlier, use it for comparable peers with a strict-majority normal population, not joint channel detection or coordinated changes affecting every peer. Keep entity labels in query results; freeze population grouping with frozen_params.groupby for shared tuning. Queries remain separate populations. Size the returned concrete model separately from optimization-search costs.
-- Holt-Winters and Isolation Forest are deprecated in vmanomaly v1.33.0 and scheduled for removal in v1.34.0; Prophet remains supported. Do not recommend Holt-Winters or Isolation Forest for new configurations. Help maintain these deprecated models only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
+- Holt-Winters and Isolation Forest are deprecated in vmanomaly v1.33.0 and scheduled for removal in v1.34.0; Prophet remains supported; the online-first recommendation policy reserves Prophet guidance for explicitly requested maintenance. Do not recommend Holt-Winters or Isolation Forest for new configurations. Help maintain these deprecated models only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
 Discover aliases on the connected server; do not infer availability from memory. Use holtwinters rather than holt_winters, and concrete Isolation Forest aliases. auto tunes at each fit; shared autotune returns a concrete configuration.
 
@@ -185,7 +185,7 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
 
 **Online-first model policy**:
 - Prefer an effective online model whenever it represents the measured profile: temporal_envelope for complex profiles with trend, calendar seasonality, changepoints, or persistent shifts; mad_online/mad for simple robust profiles; zscore_online/zscore for simple stable/light-tailed profiles where magnitude in standard-deviation units is meaningful.
-- Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations. They remain supported for existing deployments but are planned for future deprecation; offer Temporal Envelope as the univariate or multivariate migration target.
+- Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations. This is an online-first recommendation policy, not a Prophet deprecation: Prophet remains supported for explicitly requested maintenance. Holt-Winters and Isolation Forest are deprecated in vmanomaly 1.33, with removal scheduled for 1.34; offer Temporal Envelope as the univariate or multivariate migration target for those deprecated models.
 
 **Phase 1: Data-first discovery**
 1. **vmanomaly_get_server_queries / vmanomaly_get_server_models** - Use these first when the user refers to an existing scheduled query, model, or deployment
@@ -450,7 +450,7 @@ func promptConfigRecommendationHandler(_ context.Context, gpr mcp.GetPromptReque
 	userRequest += "\n**Requirements**:\n"
 	userRequest += "1. Resolve an exact query before profiling: use a query already supplied by the user or current UI/server state; if none exists, ask for it and stop\n"
 	userRequest += "2. If the user supplied the query while the UI query input is empty, use it for time-series characteristics and suggest placing it in the UI query input\n"
-	userRequest += "3. Prefer an effective online model. Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations; offer Temporal Envelope as the migration target for existing deployments\n"
+	userRequest += "3. Prefer an effective online model. Prefer online models for new configurations. Prophet remains supported for explicitly requested maintenance; offer Temporal Envelope as the migration target for deprecated Holt-Winters and Isolation Forest deployments\n"
 	userRequest += "4. Run shared autotune for the selected model class when historical data is available; set optimization_params.exact=true for online models that will use causal exact inference\n"
 	userRequest += "5. Provide complete model configuration with parameter explanations\n"
 	userRequest += "6. Validate the configuration before presenting it\n"

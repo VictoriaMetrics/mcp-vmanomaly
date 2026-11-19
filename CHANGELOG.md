@@ -7,7 +7,7 @@ published as the corresponding GitHub release notes.
 
 ### Security
 
-- Build with Go 1.26.11 to address GO-2026-6859 in the HTTP standard library.
+- Build with Go 1.26.11 to address [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in the HTTP standard library.
 
 ### Improvements
 

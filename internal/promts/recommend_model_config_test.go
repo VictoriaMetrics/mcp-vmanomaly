@@ -61,6 +61,9 @@ func TestRecommendationPromptUsesProfileComplexityDefaults(t *testing.T) {
 }
 
 func TestRecommendationToolGuidanceDoesNotRecommendOfflineModelsForNewConfigs(t *testing.T) {
+	if strings.Contains(toolGuidanceMessage, "planned for future deprecation") {
+		t.Fatal("tool guidance still implies Prophet deprecation")
+	}
 	for _, expected := range []string{
 		"Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations",
 		"offer Temporal Envelope as the univariate or multivariate migration target",

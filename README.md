@@ -566,8 +566,7 @@ With vmanomaly 1.31.0+, shared tuning accepts `peer_outlier`. Keep entity labels
 
 On servers exposing the corresponding model schema, service configurations can request `is_holiday` for Prophet and Temporal Envelope v1/v2. Existing configuration maps preserve `holidays` and `provide_series`; check the connected schema before adding them. Deployment-sizing options also pass through unchanged: accepted `options.reader.fit_response_format` values are defined by the connected backend's sizing schema. This is an estimation assumption, not a runtime reader setting.
 
-For new configurations, prefer online models. vmanomaly 1.33 deprecates Holt-Winters and Isolation Forest, with removal scheduled for 1.34. Prophet remains supported for existing deployments; use Temporal Envelope as
-the corresponding univariate or multivariate migration target.
+For new configurations, prefer online models. vmanomaly 1.33 deprecates Holt-Winters and Isolation Forest, with removal scheduled for 1.34. Prophet remains supported for existing deployments. For Holt-Winters and Isolation Forest, use Temporal Envelope as the corresponding univariate or multivariate migration target.
 
 ### Dialog example
 
