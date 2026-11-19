@@ -16,15 +16,12 @@ services:
       - vmanomaly-test
 
   vmanomaly:
-    image: victoriametrics/vmanomaly:v1.32.0
+    image: victoriametrics/vmanomaly:v1.33.0-dhi
     ports:
       - "8490:8490"
-    command: ["/etc/vmanomaly/config.yml"]
-    environment:
-      VM_LICENSE_FILE: /etc/vmanomaly/license
+    command: ["-eula", "/etc/vmanomaly/config.yml"]
     volumes:
       - ./vmanomaly-test.yml:/etc/vmanomaly/config.yml:ro
-      - ${VMANOMALY_LICENSE_FILE}:/etc/vmanomaly/license:ro
     depends_on:
       victoriametrics:
         condition: service_healthy

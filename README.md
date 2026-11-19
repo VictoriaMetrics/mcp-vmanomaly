@@ -681,3 +681,9 @@ Please feel free to submit issues, feature requests, or pull requests.
 For vmanomaly-specific questions, see the [vmanomaly documentation](https://docs.victoriametrics.com/anomaly-detection/).
 
 For MCP server issues, please open an issue in this repository.
+
+### vmanomaly v1.33.0 preparation
+
+The integration Compose setup targets `v1.33.0-dhi` and passes `-eula` for ESA acceptance. Run it after that image is published; no license-file environment variable is required for this setup. Older server configurations remain supported by the existing tools.
+
+Model configuration maps already preserve structured `holidays` and `provide_series`; consult the connected model schema before requesting `is_holiday`. Deployment-sizing options also pass through: where supported, `options.reader.fit_response_format` describes `compact_json`, `unsplittable` or the explicit conservative fallback `unknown`. This is an estimation assumption, not a reader configuration switch. The v1.33.0 embedded-documentation refresh is pending public documentation publication.

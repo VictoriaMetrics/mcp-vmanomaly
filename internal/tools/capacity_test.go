@@ -76,6 +76,12 @@ func TestCapacityForwardAndReverse(t *testing.T) {
 				if body["vmanomaly_version"] != "v1.31.0" {
 					t.Errorf("options lost: %v", body)
 				}
+				if operation == "estimate" {
+					reader := body["reader"].(map[string]any)
+					if reader["fit_response_format"] != "compact_json" {
+						t.Errorf("reader assumption lost: %v", reader)
+					}
+				}
 				if _, leaked := body["options"]; leaked {
 					t.Error("MCP wrapper leaked to API")
 				}
@@ -97,6 +103,7 @@ func TestCapacityForwardAndReverse(t *testing.T) {
 			args := map[string]any{"options": map[string]any{"vmanomaly_version": "v1.31.0"}}
 			handler := handleCapacityEstimate(client)
 			if operation == "estimate" {
+				args["options"].(map[string]any)["reader"] = map[string]any{"fit_response_format": "compact_json"}
 				args["workloads"] = []any{map[string]any{"model_class": "mad_online", "entity_count": 1000, "infer_every_seconds": 300, "options": map[string]any{"infer_points_per_cycle": 2}}}
 			} else {
 				handler = handleCapacityThroughput(client)

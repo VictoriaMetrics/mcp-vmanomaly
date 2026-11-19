@@ -352,6 +352,13 @@ func TestClient_ValidateModel(t *testing.T) {
 			wantValid:  true,
 		},
 		{
+			name:       "holiday output",
+			modelSpec:  map[string]any{"class": "prophet", "provide_series": []any{"anomaly_score", "is_holiday"}, "holidays": map[string]any{"countries": []any{"US", "CA"}, "special_events": []any{"12-24"}, "group": true}},
+			statusCode: 200,
+			response:   `{"valid":true,"model_spec":{"class":"prophet","provide_series":["anomaly_score","is_holiday"],"holidays":{"countries":["US","CA"],"special_events":["12-24"],"group":true}}}`,
+			wantValid:  true,
+		},
+		{
 			name:       "invalid model",
 			modelSpec:  map[string]any{"class": "zscore", "threshold": -1},
 			statusCode: 200,
@@ -384,6 +391,11 @@ func TestClient_ValidateModel(t *testing.T) {
 
 				var body map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&body)
+				got, _ := json.Marshal(body)
+				want, _ := json.Marshal(tt.modelSpec)
+				if string(got) != string(want) {
+					t.Errorf("model payload changed: got %s want %s", got, want)
+				}
 
 				w.WriteHeader(tt.statusCode)
 				_, _ = w.Write([]byte(tt.response))

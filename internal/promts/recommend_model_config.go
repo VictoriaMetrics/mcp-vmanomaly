@@ -93,9 +93,14 @@ const contextMessage = `Use measured profiles, user anomaly expectations, and th
 - Use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. Use one shared multivariate autotune task with the named queries and their policies, plus frozen_params.groupby when grouping is needed.
 - A joint-score multivariate model remains many-to-one when it emits per-channel y, forecast, or bound diagnostics. Model topology describes service routing and identity, not auxiliary output width; account for those series in writer cardinality planning.
 - On v1.31.0+ servers exposing peer_outlier, use it for comparable peers with a strict-majority normal population, not joint channel detection or coordinated changes affecting every peer. Keep entity labels in query results; freeze population grouping with frozen_params.groupby for shared tuning. Queries remain separate populations. Size the returned concrete model separately from optimization-search costs.
-- Prophet, Holt-Winters, and Isolation Forest remain supported for existing configurations but are planned for future deprecation. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
+- Holt-Winters and Isolation Forest are deprecated in vmanomaly v1.33.0 and scheduled for removal in v1.34.0; Prophet remains supported. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
 Discover aliases on the connected server; do not infer availability from memory. Use holtwinters rather than holt_winters, and concrete Isolation Forest aliases. auto tunes at each fit; shared autotune returns a concrete configuration.
+
+**Holiday-aware service output**:
+- On v1.33.0+ servers whose model schema supports it, service YAML can opt into provide_series: [anomaly_score, is_holiday] for Prophet or univariate/multivariate Temporal Envelope v1/v2. UI model suggestions cannot modify provide_series; keep this as exported service configuration guidance.
+- is_holiday is a timestamp/label-aligned numeric 0/1 calendar flag, independent of learned effects. Country calendars and special_events use union semantics on local civil dates; no subdivisions or forecast-horizon variants are supported. Empty calendars produce zeros and a validation warning. Do not assume a missing flag means zero.
+- For Prophet, prefer the schema-supported top-level holidays mapping for new calendar configuration; retain legacy args.country_holidays or custom holidays when maintaining existing configurations. Do not combine nonempty structured and legacy sources. Only event dates count, not Prophet lower_window/upper_window or Envelope response shoulders.
 
 **Legacy Prophet maintenance guidance** (only when the user explicitly requests help with an existing Prophet configuration):
 - For hod / hour_of_day, configure tz_aware: true and tz_seasonalities with name: "hod".
