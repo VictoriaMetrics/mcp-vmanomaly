@@ -14,7 +14,7 @@ published as the corresponding GitHub release notes.
 - Prepare the integration environment for vmanomaly v1.33.0 DHI with explicit ESA acceptance.
 - Add schema-gated holiday-output guidance for service configurations, including Prophet calendar compatibility and Temporal Envelope v1/v2. Clarify that vmanomaly 1.33 deprecates Holt-Winters and Isolation Forest, with Temporal Envelope as the migration target; Prophet remains supported.
 
-The embedded documentation refresh is pending publication of the vmanomaly v1.33.0 public docs; this change does not claim a refreshed snapshot or a published release.
+- Refresh embedded documentation for [vmanomaly v1.33.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1330) and UI v1.12.0, including holiday output, licensing, compatibility, deployment sizing and guided tours. The snapshot records the upstream vmdocs revision; the model-selection guide remains link-only.
 
 ## [v0.6.0] - 2026-11-04
 
