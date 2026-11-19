@@ -50,7 +50,8 @@ func TestRecommendationPromptUsesProfileComplexityDefaults(t *testing.T) {
 		"prefer temporal_envelope as the best balance",
 		"prefer mad_online/mad when robustness is important",
 		"Prefer zscore_online/zscore only when the sample is stable/light-tailed",
-		"Do not recommend them for new configurations",
+		"Do not recommend Holt-Winters or Isolation Forest for new configurations",
+		"Only when maintaining an existing Prophet configuration at the user's request",
 		"offer Temporal Envelope as the univariate or multivariate migration target",
 	} {
 		if !strings.Contains(contextMessage, expected) {

@@ -564,8 +564,9 @@ For multivariate detection, tune the multivariate class directly with aligned na
 
 With vmanomaly 1.31.0+, shared tuning accepts `peer_outlier`. Keep entity labels in query results and supply population grouping in `frozen_params.groupby`; queries remain separate populations. Stable query policies remain authoritative. The tuning result is a concrete model configuration: deployment sizing can estimate that model's fit/inference resources, not the `auto` wrapper's search cost. Supervised marking is available in VMUI; the current MCP tuning tool exposes the unsupervised objective, not label submission.
 
-For new configurations, prefer online models. Prophet, Holt-Winters, and Isolation Forest remain
-supported for existing deployments but are planned for future deprecation; use Temporal Envelope as
+On servers exposing the corresponding model schema, service configurations can request `is_holiday` for Prophet and Temporal Envelope v1/v2. Existing configuration maps preserve `holidays` and `provide_series`; check the connected schema before adding them. Deployment-sizing options also pass through unchanged: accepted `options.reader.fit_response_format` values are defined by the connected backend's sizing schema. This is an estimation assumption, not a runtime reader setting.
+
+For new configurations, prefer online models. vmanomaly 1.33 deprecates Holt-Winters and Isolation Forest, with removal scheduled for 1.34. Prophet remains supported for existing deployments; use Temporal Envelope as
 the corresponding univariate or multivariate migration target.
 
 ### Dialog example
@@ -681,9 +682,3 @@ Please feel free to submit issues, feature requests, or pull requests.
 For vmanomaly-specific questions, see the [vmanomaly documentation](https://docs.victoriametrics.com/anomaly-detection/).
 
 For MCP server issues, please open an issue in this repository.
-
-### vmanomaly v1.33.0 preparation
-
-The integration Compose setup targets `v1.33.0-dhi` and passes `-eula` for ESA acceptance. Run it after that image is published; no license-file environment variable is required for this setup. Older server configurations remain supported by the existing tools.
-
-Model configuration maps already preserve structured `holidays` and `provide_series`; consult the connected model schema before requesting `is_holiday`. Deployment-sizing options also pass through: where supported, `options.reader.fit_response_format` describes `compact_json`, `unsplittable` or the explicit conservative fallback `unknown`. This is an estimation assumption, not a reader configuration switch. The v1.33.0 embedded-documentation refresh is pending public documentation publication.

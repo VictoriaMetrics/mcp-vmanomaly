@@ -5,13 +5,14 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
-## [v0.6.1] - Unreleased
+### Security
+
+- Build with Go 1.26.11 to address GO-2026-6859 in the HTTP standard library.
 
 ### Improvements
 
 - Prepare the integration environment for vmanomaly v1.33.0 DHI with explicit ESA acceptance.
-- Add schema-gated holiday-output guidance for service configurations, including Prophet calendar compatibility and Temporal Envelope v1/v2. Clarify the v1.33 model deprecations.
-- Verify that model calendars/output selections and reader sizing options pass through without additional endpoint or payload adapters.
+- Add schema-gated holiday-output guidance for service configurations, including Prophet calendar compatibility and Temporal Envelope v1/v2. Clarify that vmanomaly 1.33 deprecates Holt-Winters and Isolation Forest, with Temporal Envelope as the migration target; Prophet remains supported.
 
 The embedded documentation refresh is pending publication of the vmanomaly v1.33.0 public docs; this change does not claim a refreshed snapshot or a published release.
 
@@ -219,5 +220,3 @@ The embedded documentation refresh is pending publication of the vmanomaly v1.33
 [v0.3.2]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.2.7...v0.3.0
-
-[v0.6.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.6.0...v0.6.1
