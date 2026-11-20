@@ -32,7 +32,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
   - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for schedule replay in shared autotune, experimental peer-group tuning and deployment sizing
   - version [1.32.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1320)+ for metric discovery and dynamic preset artifacts, including Compose, Helm and VM Operator deployment files
-- Go 1.26.10 or higher (if building from source)
+- Go 1.26.11 or higher (if building from source)
 
 ## Installation
 
@@ -564,9 +564,9 @@ For multivariate detection, tune the multivariate class directly with aligned na
 
 With vmanomaly 1.31.0+, shared tuning accepts `peer_outlier`. Keep entity labels in query results and supply population grouping in `frozen_params.groupby`; queries remain separate populations. Stable query policies remain authoritative. The tuning result is a concrete model configuration: deployment sizing can estimate that model's fit/inference resources, not the `auto` wrapper's search cost. Supervised marking is available in VMUI; the current MCP tuning tool exposes the unsupervised objective, not label submission.
 
-For new configurations, prefer online models. Prophet, Holt-Winters, and Isolation Forest remain
-supported for existing deployments but are planned for future deprecation; use Temporal Envelope as
-the corresponding univariate or multivariate migration target.
+On servers exposing the corresponding model schema, service configurations can request `is_holiday` for Prophet and Temporal Envelope v1/v2. Existing configuration maps preserve `holidays` and `provide_series`; check the connected schema before adding them. Deployment-sizing options also pass through unchanged: accepted `options.reader.fit_response_format` values are defined by the connected backend's sizing schema. This is an estimation assumption, not a runtime reader setting.
+
+For new configurations, prefer online models. vmanomaly 1.33 deprecates Holt-Winters and Isolation Forest, with removal scheduled for 1.34. Prophet remains supported for existing deployments. For Holt-Winters and Isolation Forest, use Temporal Envelope as the corresponding univariate or multivariate migration target.
 
 ### Dialog example
 

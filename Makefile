@@ -75,10 +75,6 @@ test-integration: ## Run integration tests (requires vmanomaly server running)
 	$(GOTEST) -v -tags=integration -race ./...
 
 test-integration-docker: ## Run integration tests with Docker
-	@if [ -z "$(VMANOMALY_LICENSE_FILE)" ]; then \
-		echo "VMANOMALY_LICENSE_FILE must point to a vmanomaly license file"; \
-		exit 1; \
-	fi
 	@echo "Starting test environment..."
 	@docker compose -f testdata/docker-compose.test.yml up -d
 	@echo "Waiting for services to be healthy..."

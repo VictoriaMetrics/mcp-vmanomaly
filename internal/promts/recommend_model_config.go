@@ -93,9 +93,14 @@ const contextMessage = `Use measured profiles, user anomaly expectations, and th
 - Use temporal_envelope_multivariate only when aligned channels have meaningful normal dependencies; each channel still keeps its own trend and seasonal profile. Use one shared multivariate autotune task with the named queries and their policies, plus frozen_params.groupby when grouping is needed.
 - A joint-score multivariate model remains many-to-one when it emits per-channel y, forecast, or bound diagnostics. Model topology describes service routing and identity, not auxiliary output width; account for those series in writer cardinality planning.
 - On v1.31.0+ servers exposing peer_outlier, use it for comparable peers with a strict-majority normal population, not joint channel detection or coordinated changes affecting every peer. Keep entity labels in query results; freeze population grouping with frozen_params.groupby for shared tuning. Queries remain separate populations. Size the returned concrete model separately from optimization-search costs.
-- Prophet, Holt-Winters, and Isolation Forest remain supported for existing configurations but are planned for future deprecation. Do not recommend them for new configurations. Help maintain them only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
+- Holt-Winters and Isolation Forest are deprecated in vmanomaly v1.33.0 and scheduled for removal in v1.34.0; Prophet remains supported; the online-first recommendation policy reserves Prophet guidance for explicitly requested maintenance. Do not recommend Holt-Winters or Isolation Forest for new configurations. Help maintain these deprecated models only when explicitly requested, and offer Temporal Envelope as the univariate or multivariate migration target.
 
 Discover aliases on the connected server; do not infer availability from memory. Use holtwinters rather than holt_winters, and concrete Isolation Forest aliases. auto tunes at each fit; shared autotune returns a concrete configuration.
+
+**Holiday-aware service output**:
+- On v1.33.0+ servers whose model schema supports it, service YAML can opt into provide_series: [anomaly_score, is_holiday] for Prophet or univariate/multivariate Temporal Envelope v1/v2. UI model suggestions cannot modify provide_series; keep this as exported service configuration guidance.
+- is_holiday is a timestamp/label-aligned numeric 0/1 calendar flag, independent of learned effects. Country calendars and special_events use union semantics on local civil dates; no subdivisions or forecast-horizon variants are supported. Empty calendars produce zeros and a validation warning. Do not assume a missing flag means zero.
+- Only when maintaining an existing Prophet configuration at the user's request, use the schema-supported top-level holidays mapping to add a calendar where none exists; retain legacy args.country_holidays or custom holidays when already configured. Do not combine nonempty structured and legacy sources. Only event dates count, not Prophet lower_window/upper_window or Envelope response shoulders.
 
 **Legacy Prophet maintenance guidance** (only when the user explicitly requests help with an existing Prophet configuration):
 - For hod / hour_of_day, configure tz_aware: true and tz_seasonalities with name: "hod".
@@ -162,7 +167,7 @@ Discover aliases on the connected server; do not infer availability from memory.
 - Infrastructure metrics: 0.03-0.05.
 - Noisy latency/ratio metrics: 0.05-0.10.
 
-For vmanomaly v1.30.7+ incident investigations, inspect persisted results in the alert's absolute time window before recommending a new detection run. Incident links resolve current configuration and do not reuse a production model's fitted state for a new UI run. Discover available tools before claiming incident-context support; a browser redirect is not a data tool. Preserve emitted aliases and keep UI/API access behind the same authenticated gateway.
+For vmanomaly v1.30.7+ incident investigations, inspect persisted results in the alert's absolute time window before recommending a new detection run. Incident links resolve current configuration and do not reuse a production model's fitted state for a new UI run. Discover available tools before claiming incident-context support; a browser redirect is not a data tool. Preserve emitted aliases. Protect VMUI and both /api/v1/incident/ endpoints behind the same authenticated gateway; labels filter results, they do not grant access.
 The server.ui_allowed_models setting only curates UI selectors and Auto targets; it does not restrict model discovery, Copilot suggestions or API execution.
 
 Validate alert expressions and persistence against the user’s anomaly duration, query step and actual output series. Avoid inventing generic alert recipes. Backtest changes against known incidents before production use.`
@@ -180,7 +185,7 @@ You have access to powerful MCP tools that integrate with vmanomaly. **ALWAYS us
 
 **Online-first model policy**:
 - Prefer an effective online model whenever it represents the measured profile: temporal_envelope for complex profiles with trend, calendar seasonality, changepoints, or persistent shifts; mad_online/mad for simple robust profiles; zscore_online/zscore for simple stable/light-tailed profiles where magnitude in standard-deviation units is meaningful.
-- Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations. They remain supported for existing deployments but are planned for future deprecation; offer Temporal Envelope as the univariate or multivariate migration target.
+- Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations. This is an online-first recommendation policy, not a Prophet deprecation: Prophet remains supported for explicitly requested maintenance. Holt-Winters and Isolation Forest are deprecated in vmanomaly 1.33, with removal scheduled for 1.34; offer Temporal Envelope as the univariate or multivariate migration target for those deprecated models.
 
 **Phase 1: Data-first discovery**
 1. **vmanomaly_get_server_queries / vmanomaly_get_server_models** - Use these first when the user refers to an existing scheduled query, model, or deployment
@@ -445,7 +450,7 @@ func promptConfigRecommendationHandler(_ context.Context, gpr mcp.GetPromptReque
 	userRequest += "\n**Requirements**:\n"
 	userRequest += "1. Resolve an exact query before profiling: use a query already supplied by the user or current UI/server state; if none exists, ask for it and stop\n"
 	userRequest += "2. If the user supplied the query while the UI query input is empty, use it for time-series characteristics and suggest placing it in the UI query input\n"
-	userRequest += "3. Prefer an effective online model. Do not recommend Prophet, Holt-Winters, or Isolation Forest for new configurations; offer Temporal Envelope as the migration target for existing deployments\n"
+	userRequest += "3. Prefer an effective online model. Prefer online models for new configurations. Prophet remains supported for explicitly requested maintenance; offer Temporal Envelope as the migration target for deprecated Holt-Winters and Isolation Forest deployments\n"
 	userRequest += "4. Run shared autotune for the selected model class when historical data is available; set optimization_params.exact=true for online models that will use causal exact inference\n"
 	userRequest += "5. Provide complete model configuration with parameter explanations\n"
 	userRequest += "6. Validate the configuration before presenting it\n"
