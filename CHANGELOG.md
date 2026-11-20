@@ -5,6 +5,8 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+## [v0.6.1] - 2026-11-20
+
 ### Security
 
 - Build with Go 1.26.11 to address [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in the HTTP standard library.
@@ -210,6 +212,7 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[v0.6.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.4.2...v0.5.0
