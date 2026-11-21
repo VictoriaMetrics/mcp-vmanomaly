@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/tlsfiles"
 )
 
 // Client represents a vmanomaly API client
@@ -53,6 +55,25 @@ func (c *Client) SetTLSConfig(cfg *tls.Config) error {
 	transport := base.Clone()
 	transport.TLSClientConfig = cfg
 	c.httpClient.Transport = transport
+	return nil
+}
+
+// SetTLSCAFile makes the client verify vmanomaly against the system roots plus the
+// CA certificates in caFile, re-reading the file at most once per second so a
+// rotated CA is used without a restart. Call it after SetTLSConfig.
+func (c *Client) SetTLSCAFile(caFile string) error {
+	if caFile == "" {
+		return nil
+	}
+	transport, ok := c.httpClient.Transport.(*http.Transport)
+	if !ok || transport == nil {
+		return fmt.Errorf("cannot reload VMANOMALY_TLS_CA_FILE: SetTLSConfig must configure the transport first")
+	}
+	reloading, err := tlsfiles.NewCATransport(transport, caFile, "VMANOMALY_TLS_CA_FILE")
+	if err != nil {
+		return err
+	}
+	c.httpClient.Transport = reloading
 	return nil
 }
 
