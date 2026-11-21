@@ -48,6 +48,11 @@ func (f Files) paths() []string {
 	return []string{f.CAFile, f.CertFile, f.KeyFile}
 }
 
+// sources names the setting of each path in paths, for error messages.
+func (f Files) sources() []string {
+	return []string{f.CASource, f.CertSource, f.CertSource}
+}
+
 // transport sends requests through a clone of base whose TLS settings come from
 // the watched files. When any file changes, the clone is rebuilt and idle
 // connections of the previous one are closed, so the next request performs a
@@ -86,13 +91,14 @@ func NewTransport(base *http.Transport, files Files) (http.RoundTripper, error) 
 
 func (t *transport) read() ([][]byte, error) {
 	contents := make([][]byte, 3)
+	sources := t.files.sources()
 	for i, path := range t.files.paths() {
 		if path == "" {
 			continue
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read %s: %w", path, err)
+			return nil, fmt.Errorf("failed to read %s: %w", sources[i], err)
 		}
 		contents[i] = data
 	}

@@ -132,6 +132,9 @@ func TestSetTLSFilesWithoutFilesKeepsTransport(t *testing.T) {
 	if err := client.SetTLSFiles(tlsfiles.Files{}); err != nil {
 		t.Fatal(err)
 	}
+	if err := client.SetTLSFiles(tlsfiles.Files{KeyFile: "client.key"}); err == nil {
+		t.Fatal("a key file without a certificate must be rejected")
+	}
 	if client.httpClient.Transport != nil {
 		t.Fatal("expected the default transport")
 	}

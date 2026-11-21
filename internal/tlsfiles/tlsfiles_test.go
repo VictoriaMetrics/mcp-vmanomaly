@@ -209,11 +209,20 @@ func TestConstructorsRejectInvalidFiles(t *testing.T) {
 		"missing certificate": {CertFile: missing, KeyFile: pki.ClientKey},
 		"mismatched key":      {CertFile: pki.ServerCert, KeyFile: pki.ClientKey},
 		"certificate only":    {CertFile: pki.ClientCert},
-		"missing CA":          {CAFile: missing},
-		"CA without certs":    {CAFile: pki.ClientKey, CASource: "TEST_CA_FILE"},
+		"key only":            {KeyFile: pki.ClientKey},
 	} {
 		if _, err := NewTransport(base, files); err == nil {
 			t.Errorf("%s: expected an error", name)
+		}
+	}
+	// CA errors name the setting, e.g. "failed to read TEST_CA_FILE: open ...".
+	for name, files := range map[string]Files{
+		"missing CA":       {CAFile: missing, CASource: "TEST_CA_FILE"},
+		"CA without certs": {CAFile: pki.ClientKey, CASource: "TEST_CA_FILE"},
+	} {
+		_, err := NewTransport(base, files)
+		if err == nil || !strings.Contains(err.Error(), "TEST_CA_FILE") {
+			t.Errorf("%s: expected an error naming TEST_CA_FILE, got %v", name, err)
 		}
 	}
 }

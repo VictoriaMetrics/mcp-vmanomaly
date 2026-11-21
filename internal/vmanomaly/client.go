@@ -63,7 +63,7 @@ func (c *Client) SetTLSConfig(cfg *tls.Config) error {
 // changes, idle connections are closed and the next request performs a new handshake.
 // Call it after SetTLSConfig. Without any file it keeps the current transport.
 func (c *Client) SetTLSFiles(files tlsfiles.Files) error {
-	if files.CAFile == "" && files.CertFile == "" {
+	if files.CAFile == "" && files.CertFile == "" && files.KeyFile == "" {
 		return nil
 	}
 	transport, ok := c.httpClient.Transport.(*http.Transport)
