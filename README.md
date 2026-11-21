@@ -490,6 +490,16 @@ If you run the server in [Streamable HTTP](#modes) mode, you can register it wit
 codex mcp add vmanomaly --url http://localhost:8080/mcp
 ```
 
+When the server requires `MCP_AUTH_TOKEN` or forwards headers listed in `MCP_PASSTHROUGH_HEADERS`, configure them
+in `~/.codex/config.toml`. `bearer_token_env_var` names the environment variable that holds the token:
+
+```toml
+[mcp_servers.vmanomaly]
+url = "http://localhost:8080/mcp"
+bearer_token_env_var = "VMANOMALY_MCP_TOKEN"
+http_headers = { "X-Vmanomaly-Instance" = "team-a" }
+```
+
 See [Codex MCP docs](https://developers.openai.com/codex/mcp) for more info.
 
 ### Gemini CLI
@@ -511,10 +521,30 @@ Add the following to your Gemini CLI `~/.gemini/settings.json` file:
 }
 ```
 
-To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`:
+To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`, pass the
+`MCP_AUTH_TOKEN` and any headers listed in `MCP_PASSTHROUGH_HEADERS`:
 
 ```sh
-gemini mcp add vmanomaly --transport http http://localhost:8080/mcp
+gemini mcp add --transport http \
+  --header "Authorization: Bearer <MCP_AUTH_TOKEN>" \
+  --header "X-Vmanomaly-Instance: team-a" \
+  vmanomaly http://localhost:8080/mcp
+```
+
+The same in `settings.json` uses `httpUrl` (`url` selects the SSE transport in Gemini CLI):
+
+```json
+{
+  "mcpServers": {
+    "vmanomaly": {
+      "httpUrl": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer <MCP_AUTH_TOKEN>",
+        "X-Vmanomaly-Instance": "team-a"
+      }
+    }
+  }
+}
 ```
 
 See [Gemini CLI MCP docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) for more info.
@@ -526,28 +556,38 @@ Add the following to your OpenCode config file in `~/.config/opencode/opencode.j
 ```json
 {
   "mcp": {
-    "vmanomaly": {
-      "type": "local",
-      "command": ["/path/to/mcp-vmanomaly"],
-      "enabled": true,
-      "environment": {
-        "VMANOMALY_ENDPOINT": "http://localhost:8490",
-        "VMANOMALY_BEARER_TOKEN": "<YOUR_TOKEN>",
-        "VMANOMALY_HEADERS": "X-Custom=value1,X-Auth=value2"
+    "servers": {
+      "vmanomaly": {
+        "type": "local",
+        "command": ["/path/to/mcp-vmanomaly"],
+        "environment": {
+          "VMANOMALY_ENDPOINT": "http://localhost:8490",
+          "VMANOMALY_BEARER_TOKEN": "<YOUR_TOKEN>",
+          "VMANOMALY_HEADERS": "X-Custom=value1,X-Auth=value2"
+        }
       }
     }
   }
 }
 ```
 
-To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`:
+To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`, pass the
+`MCP_AUTH_TOKEN` and any headers listed in `MCP_PASSTHROUGH_HEADERS`. OpenCode tries OAuth for remote servers by
+default, so set `"oauth": false` when the server uses a static token:
 
 ```json
 {
   "mcp": {
-    "vmanomaly": {
-      "type": "remote",
-      "url": "http://localhost:8080/mcp"
+    "servers": {
+      "vmanomaly": {
+        "type": "remote",
+        "url": "http://localhost:8080/mcp",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:VMANOMALY_MCP_TOKEN}",
+          "X-Vmanomaly-Instance": "team-a"
+        }
+      }
     }
   }
 }
