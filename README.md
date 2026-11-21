@@ -814,7 +814,7 @@ and see [Security](#security).
 
 Headers listed in `MCP_PASSTHROUGH_HEADERS` override the same headers from `VMANOMALY_HEADERS`.
 A forwarded `Authorization` header also replaces the one built from `VMANOMALY_BEARER_TOKEN`.
-`Content-Type` is always set by the server.
+Headers the server sets itself, such as `Content-Type`, `Host` and `Content-Length`, cannot be listed.
 
 `Authorization` cannot be forwarded when `MCP_AUTH_TOKEN` is set, because the incoming `Authorization`
 header then carries the MCP server's own token. Forward upstream credentials in a different header and let
