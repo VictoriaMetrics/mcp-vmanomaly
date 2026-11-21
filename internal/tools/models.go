@@ -64,7 +64,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[GetModelSchemaArgs](),
+		inputSchema[GetModelSchemaArgs](),
 	)
 	s.AddTool(getModelSchemaTool, mcp.NewTypedToolHandler(handleGetModelSchema(client)))
 
@@ -77,7 +77,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[ValidateModelConfigArgs](),
+		inputSchema[ValidateModelConfigArgs](),
 	)
 	s.AddTool(validateModelConfigTool, mcp.NewTypedToolHandler(handleValidateModelConfig(client)))
 }

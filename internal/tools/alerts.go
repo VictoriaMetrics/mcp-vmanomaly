@@ -30,7 +30,7 @@ func RegisterAlertTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[GenerateAlertRuleArgs](),
+		inputSchema[GenerateAlertRuleArgs](),
 	)
 	s.AddTool(generateAlertRuleTool, mcp.NewTypedToolHandler(handleGenerateAlertRule(client)))
 }

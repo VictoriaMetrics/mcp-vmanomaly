@@ -5,6 +5,19 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+### Features
+
+- Added `MCP_STATELESS` to run the Streamable HTTP transport in stateless mode, so session IDs injected by MCP gateways are ignored instead of rejected.
+- Added `MCP_DISABLE_LOCALHOST_PROTECTION` to turn off the DNS-rebinding guard in `http` and `sse` modes when a same-host proxy forwards over loopback with the original `Host` header.
+
+### Improvements
+
+- Updated `github.com/mark3labs/mcp-go` from v0.43.0 to v1.6.0, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers. Tool input and output schemas are unchanged; tools without arguments now advertise an explicit empty `properties` object.
+
+### Breaking changes
+
+- With mcp-go v1, `http` and `sse` modes reject a request that arrives over a loopback connection with a non-localhost `Host` header (`403`), and the Streamable HTTP transport rejects `Mcp-Session-Id` values it did not issue. Set `MCP_DISABLE_LOCALHOST_PROTECTION=true` and/or `MCP_STATELESS=true` for proxies and gateways that rely on either behavior.
+
 ## [v0.6.1] - 2026-11-20
 
 ### Security

@@ -80,7 +80,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[TimeseriesCharacteristicsArgs](),
+		inputSchema[TimeseriesCharacteristicsArgs](),
 	)
 	s.AddTool(characteristicsTool, mcp.NewTypedToolHandler(handleTimeseriesCharacteristics(client)))
 
@@ -93,7 +93,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[AutotuneTaskArgs](),
+		inputSchema[AutotuneTaskArgs](),
 	)
 	s.AddTool(createAutotuneTool, mcp.NewTypedToolHandler(handleCreateAutotuneTask(client)))
 
@@ -106,7 +106,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[AutotuneTaskStatusArgs](),
+		inputSchema[AutotuneTaskStatusArgs](),
 	)
 	s.AddTool(getAutotuneTool, mcp.NewTypedToolHandler(handleGetAutotuneTask(client)))
 
@@ -119,7 +119,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(true),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[AutotuneTaskIDArgs](),
+		inputSchema[AutotuneTaskIDArgs](),
 	)
 	s.AddTool(cancelAutotuneTool, mcp.NewTypedToolHandler(handleCancelAutotuneTask(client)))
 }

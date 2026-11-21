@@ -50,6 +50,14 @@ func ErrorClass(err error) string {
 	return classifyError(err)
 }
 
+// callToolIsError reports whether a tools/call result is an error result.
+// Since mcp-go v1 the hook receives the result as any, because a task-augmented
+// call returns a task handle instead of *mcp.CallToolResult.
+func callToolIsError(result any) bool {
+	r, ok := result.(*mcp.CallToolResult)
+	return ok && r != nil && r.IsError
+}
+
 func New(ms *metrics.Set) *server.Hooks {
 	hooks := &server.Hooks{}
 
@@ -71,14 +79,15 @@ func New(ms *metrics.Set) *server.Hooks {
 		ms.GetOrCreateCounter(`mcp_vmanomaly_list_prompts_total`).Inc()
 	})
 
-	hooks.AddAfterCallTool(func(_ context.Context, _ any, message *mcp.CallToolRequest, result *mcp.CallToolResult) {
+	hooks.AddAfterCallTool(func(_ context.Context, _ any, message *mcp.CallToolRequest, result any) {
+		isError := callToolIsError(result)
 		ms.GetOrCreateCounter(fmt.Sprintf(
 			`mcp_vmanomaly_call_tool_total{name=%s,is_error=%s}`,
 			metricLabelValue(message.Params.Name),
-			metricLabelValue(strconv.FormatBool(result.IsError)),
+			metricLabelValue(strconv.FormatBool(isError)),
 		)).Inc()
 
-		if result.IsError {
+		if isError {
 			slog.Warn("Tool call failed", "tool", message.Params.Name)
 		} else {
 			// Tool arguments and results may contain credentials, tenant IDs,
