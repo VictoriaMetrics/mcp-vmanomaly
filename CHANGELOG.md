@@ -7,6 +7,8 @@ published as the corresponding GitHub release notes.
 
 ### Features
 
+- Added `MCP_AUTH_TOKEN` and `MCP_AUTH_TOKEN_FILE` to require `Authorization: Bearer <token>` from MCP clients in `http` and `sse` modes. Health and metrics endpoints stay public.
+- Added `MCP_PASSTHROUGH_HEADERS` to forward selected headers from each MCP request to vmanomaly, for example for [vmauth header-based routing](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) between installations. Forwarded headers override `VMANOMALY_HEADERS` and `VMANOMALY_BEARER_TOKEN` on collision.
 - Added `MCP_STATELESS` to run the Streamable HTTP transport in stateless mode, so session IDs injected by MCP gateways are ignored instead of rejected. In this mode `GET /mcp` answers `405`, because standalone notification streams need sessions.
 - Added `MCP_DISABLE_LOCALHOST_PROTECTION` to turn off the DNS-rebinding guard in `http` and `sse` modes when a same-host proxy forwards over loopback with the original `Host` header.
 

@@ -152,6 +152,9 @@ MCP Server for vmanomaly is configured via environment variables:
 | `MCP_DISABLED_TOOLS`     | Comma-separated tool denylist; takes precedence over the allowlist                                     | No       | -                | -                      |
 | `MCP_DISABLE_RESOURCES`  | Disable all resources (documentation search will continue to work)                                      | No       | `false`          | `false`, `true`        |
 | `MCP_HEARTBEAT_INTERVAL` | Heartbeat interval for streamable-http protocol (keeps connection alive through network infrastructure) | No       | `30s`            | -                      |
+| `MCP_AUTH_TOKEN`         | Bearer token MCP clients must send as `Authorization: Bearer <token>`. `/health/*` and `/metrics` stay public. Only applies in `sse`/`http` modes | No | - | - |
+| `MCP_AUTH_TOKEN_FILE`    | Path to a file with the `MCP_AUTH_TOKEN` value, for mounted secrets; mutually exclusive with `MCP_AUTH_TOKEN` | No | - | - |
+| `MCP_PASSTHROUGH_HEADERS` | HTTP header names to forward from incoming MCP requests to vmanomaly (comma-separated list). Overrides `VMANOMALY_HEADERS` on collision; a forwarded `Authorization` replaces the one built from `VMANOMALY_BEARER_TOKEN`. Cannot include `Authorization` when `MCP_AUTH_TOKEN` is set. Only applies in `sse`/`http` modes | No | - | - |
 | `MCP_STATELESS`          | Run the Streamable HTTP server in stateless mode: `Mcp-Session-Id` values are ignored instead of validated. Useful behind a gateway that injects its own session IDs. `GET /mcp` then answers `405`, as no standalone notification stream is offered. Only applies in `http` mode | No | `false` | `false`, `true` |
 | `MCP_DISABLE_LOCALHOST_PROTECTION` | Disable the DNS-rebinding guard that answers `403` to a request arriving over a loopback connection whose `Host` header is not a localhost value. Needed when a same-host proxy or sidecar forwards over `127.0.0.1` and keeps the original `Host`. Applies in `http` and `sse` modes | No | `false` | `false`, `true` |
 | `MCP_LOG_LEVEL`          | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                      | No       | `info`           | -                      |
@@ -203,6 +206,12 @@ export VMANOMALY_BEARER_TOKEN_FILE="/run/secrets/vmanomaly-token"
 # With custom headers (e.g., behind a reverse proxy)
 export VMANOMALY_HEADERS="X-Custom-Header=value1,X-Another=value2"
 
+# Require a token from MCP clients in http/sse modes
+export MCP_AUTH_TOKEN_FILE="/run/secrets/mcp-auth-token"
+
+# Forward per-client headers to vmanomaly, e.g. for vmauth header-based routing
+export MCP_PASSTHROUGH_HEADERS="X-Tenant,X-Access-Key"
+
 # Expose only the tools required by this deployment. A denylist can further
 # narrow this set and always takes precedence.
 export MCP_ENABLED_TOOLS="vmanomaly_health_check,vmanomaly_search_docs"
@@ -241,16 +250,22 @@ the caller's trusted-domain vmanomaly installation:
 - A local per-user `stdio` process may use that user's token as its configured upstream token.
 - A remote MCP instance dedicated to one trusted domain may use a domain-scoped service token.
 - A shared remote MCP requires per-request forwarding of a verified user token so the gateway can
-  route each call to the correct trusted domain. The current process-wide token configuration does
-  not implement this pass-through mode; do not place multiple untrusted domains behind one static
-  MCP credential.
+  route each call to the correct trusted domain. List the routing and credential headers in
+  `MCP_PASSTHROUGH_HEADERS` and let an authenticating gateway such as `vmauth` in front of
+  vmanomaly verify them and pick the installation. Do not place multiple untrusted domains behind
+  one static `VMANOMALY_BEARER_TOKEN`.
 
 - Prefer `stdio` for a local, single-user integration. It has no network listener and inherits
   access control from the process that launches it.
-- HTTP and SSE transports do not provide built-in client authentication. Keep the default
-  loopback bind where possible. If remote access is required, place the server behind an
-  authenticated TLS reverse proxy such as `vmauth`, restrict the network path, and do not expose
-  `/mcp`, `/sse`, or `/message` directly to an untrusted network.
+- HTTP and SSE transports accept clients without credentials unless `MCP_AUTH_TOKEN` (or
+  `MCP_AUTH_TOKEN_FILE`) is set. The token is one shared secret compared in constant time; it
+  does not identify users. Keep the default loopback bind where possible. If remote access is
+  required, set the token, terminate TLS in a reverse proxy such as `vmauth`, restrict the network
+  path, and do not expose `/mcp`, `/sse`, or `/message` directly to an untrusted network.
+- `MCP_PASSTHROUGH_HEADERS` forwards client-controlled values to vmanomaly. Only list headers that
+  the next hop verifies or that select between installations the caller may already reach. When
+  `MCP_AUTH_TOKEN` is set, `Authorization` cannot be forwarded, so the MCP token never reaches
+  vmanomaly; use a separate header for upstream credentials.
 - Keep `/metrics` on an internal monitoring network or protect it at the proxy; health endpoints
   can be exposed only as required by the deployment platform.
 - Give the configured vmanomaly credential the least privilege and trusted-domain scope available.
