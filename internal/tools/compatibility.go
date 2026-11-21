@@ -35,7 +35,7 @@ func RegisterCompatibilityTools(s *server.MCPServer, client *vmanomaly.Client) {
 		"vmanomaly_check_compatibility",
 		mcp.WithDescription("Check if persisted vmanomaly state is compatible with the current or target runtime version. Returns compatibility status and required migration actions."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Check vmanomaly Versions Comatability",
+			Title:           "Check vmanomaly Version Compatibility",
 			ReadOnlyHint:    ptr(true),
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),

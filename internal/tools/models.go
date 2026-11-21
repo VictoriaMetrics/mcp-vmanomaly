@@ -35,7 +35,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 		"vmanomaly_list_models",
 		mcp.WithDescription("List model types exposed to VMUI and other UI-oriented configuration flows. Use this before selecting a model in UI, then call vmanomaly_get_model_schema. Experimental multivariate models may be included depending on the connected server version. Use its response as the source of truth."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Vmanomaly List Models",
+			Title:           "List vmanomaly Models",
 			ReadOnlyHint:    ptr(true),
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),

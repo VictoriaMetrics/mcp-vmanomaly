@@ -44,7 +44,7 @@ func RegisterDocsTool(s *server.MCPServer) {
 	s.AddTool(searchDocsTool, typedToolHandler(handleSearchDocs()))
 	s.AddTool(mcp.NewTool("vmanomaly_read_doc_section",
 		mcp.WithDescription("Read a bounded documentation section by source URI and character offset returned by search. Follow next_offset for continuation; fetch relevant sections before relying on truncated guidance."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{ReadOnlyHint: ptr(true), DestructiveHint: ptr(false), OpenWorldHint: ptr(false)}),
+		readOnlyAnnotation("Read vmanomaly Docs Section", false),
 		inputSchema[ReadDocArgs]()), typedToolHandler(handleReadDocSection))
 }
 

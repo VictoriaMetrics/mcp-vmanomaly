@@ -15,7 +15,7 @@ func RegisterTools(s *server.MCPServer, client *vmanomaly.Client) {
 	healthTool := mcp.NewTool("vmanomaly_health_check",
 		mcp.WithDescription("Check the health status of the vmanomaly server"),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Vmanomaly Server Health Check",
+			Title:           "vmanomaly Server Health Check",
 			ReadOnlyHint:    ptr(true),
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),

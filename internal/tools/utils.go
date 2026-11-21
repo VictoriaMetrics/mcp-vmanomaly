@@ -9,6 +9,17 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// readOnlyAnnotation marks a tool as read-only and non-destructive with a human-readable title.
+// openWorld reports whether the tool reaches systems outside vmanomaly, such as a datasource.
+func readOnlyAnnotation(title string, openWorld bool) mcp.ToolOption {
+	return mcp.WithToolAnnotation(mcp.ToolAnnotation{
+		Title:           title,
+		ReadOnlyHint:    ptr(true),
+		DestructiveHint: ptr(false),
+		OpenWorldHint:   ptr(openWorld),
+	})
+}
+
 func ptr[T any](v T) *T {
 	return &v
 }
