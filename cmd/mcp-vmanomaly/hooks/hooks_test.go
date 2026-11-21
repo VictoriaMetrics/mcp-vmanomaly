@@ -110,7 +110,16 @@ func TestLoggerHooksAddPayloadsOnlyAtDebug(t *testing.T) {
 				hook(ctx, 1, request, mcp.NewToolResultError("failed"))
 			}
 
+			longName := &mcp.CallToolRequest{}
+			longName.Params.Name = strings.Repeat("n", 10_000)
+			for _, hook := range h.OnAfterCallTool {
+				hook(ctx, strings.Repeat("i", 10_000), longName, mcp.NewToolResultText("ok"))
+			}
+
 			logs := out.String()
+			if strings.Contains(logs, strings.Repeat("n", 200)) || strings.Contains(logs, strings.Repeat("i", 200)) {
+				t.Fatalf("client-controlled tool name or request ID is not bounded:\n%.500s", logs)
+			}
 			if got := strings.Contains(logs, secret); got != tc.wantSecret {
 				t.Fatalf("secret in logs = %t, want %t:\n%s", got, tc.wantSecret, logs)
 			}

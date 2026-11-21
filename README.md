@@ -285,12 +285,15 @@ the caller's trusted-domain vmanomaly installation:
   allowlist retains backward compatibility by enabling every registered tool.
 - `MCP_DISABLE_RESOURCES=true` hides resource discovery and reads. The documentation-search tool
   remains independent and can be separately disabled with the tool policy.
-- At `info` level and above, logs and metrics intentionally omit tool arguments/results, raw
-  errors, client metadata, and resource URIs; failures are logged with a bounded `error_class`.
+- At `info` level and above, the MCP request, tool and access logs and the metrics intentionally
+  omit tool arguments/results, raw errors, client metadata, and resource URIs; failures are logged
+  with a bounded `error_class`, and client-chosen request IDs, session IDs and names are truncated.
   `MCP_LOG_LEVEL=debug` adds request and result payloads, raw errors and client names to the
   logs, so enable it only for troubleshooting and treat such logs as secrets. The HTTP access log
   records method, path (without query string), status, size, duration, remote address and MCP
-  session ID. Treat MCP responses and downstream vmanomaly logs as sensitive nevertheless.
+  session ID. Transport failures that mcp-go reports itself, such as a broken stdio stream or a
+  recovered panic, are logged at `error` level with their original message. Treat MCP responses
+  and downstream vmanomaly logs as sensitive nevertheless.
 
 These controls reduce the MCP server's exposure but do not create tenant isolation. Treat one
 logical vmanomaly installation, including its replicas or shards, as one trusted domain. Route

@@ -16,7 +16,7 @@ type Logger struct {
 
 // New creates a logger that writes to w in the given format ("text" or "json")
 // at the given level ("debug", "info", "warn" or "error"), and installs it as the
-// slog default and as the output of the standard log package.
+// slog default and, at error level, as the output of the standard log package.
 func New(w io.Writer, format, level string) (*Logger, error) {
 	opts := &slog.HandlerOptions{Level: ParseLevel(level)}
 	var handler slog.Handler
@@ -32,10 +32,28 @@ func New(w io.Writer, format, level string) (*Logger, error) {
 	slogger := slog.New(handler)
 	slog.SetDefault(slogger)
 
+	// slog.SetDefault routes the standard log package at INFO. mcp-go uses it only
+	// for panics and transport failures, so keep them visible at warn/error levels.
+	stdLogger := slog.NewLogLogger(handler, slog.LevelError)
+	log.SetFlags(0)
+	log.SetOutput(stdLogger.Writer())
+
 	return &Logger{
 		slogLogger: slogger,
-		stdLogger:  slog.NewLogLogger(handler, slog.LevelError),
+		stdLogger:  stdLogger,
 	}, nil
+}
+
+// maxFieldLength bounds client-controlled values written to info-level logs.
+const maxFieldLength = 128
+
+// Bounded returns s truncated to maxFieldLength bytes, marking the cut, so a client
+// cannot inflate log lines with huge request IDs, session IDs or names.
+func Bounded(s string) string {
+	if len(s) <= maxFieldLength {
+		return s
+	}
+	return s[:maxFieldLength] + "...(truncated)"
 }
 
 // SlogLogger returns the underlying slog.Logger.

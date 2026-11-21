@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/metrics"
+
+	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/logging"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -126,43 +128,43 @@ func NewLoggerHooks() *server.Hooks {
 	hooks := &server.Hooks{}
 
 	hooks.AddOnRegisterSession(func(_ context.Context, session server.ClientSession) {
-		slog.Info("Session registered", "session_id", session.SessionID())
+		slog.Info("Session registered", "session_id", logging.Bounded(session.SessionID()))
 	})
 
 	hooks.AddOnUnregisterSession(func(_ context.Context, session server.ClientSession) {
-		slog.Info("Session unregistered", "session_id", session.SessionID())
+		slog.Info("Session unregistered", "session_id", logging.Bounded(session.SessionID()))
 	})
 
 	hooks.AddBeforeAny(func(ctx context.Context, id any, method mcp.MCPMethod, message any) {
 		slog.Info("MCP request received", withDebug(ctx, []any{
-			"request_id", id,
+			"request_id", requestID(id),
 			"session_id", extractSessionID(ctx),
-			"method", string(method),
+			"method", logging.Bounded(string(method)),
 		}, "message", toJSON(message))...)
 	})
 
 	hooks.AddOnSuccess(func(ctx context.Context, id any, method mcp.MCPMethod, message any, result any) {
 		slog.Info("MCP request succeeded", withDebug(ctx, []any{
-			"request_id", id,
+			"request_id", requestID(id),
 			"session_id", extractSessionID(ctx),
-			"method", string(method),
+			"method", logging.Bounded(string(method)),
 		}, "message", toJSON(message), "result", toJSON(result))...)
 	})
 
 	hooks.AddOnError(func(ctx context.Context, id any, method mcp.MCPMethod, message any, err error) {
 		slog.Error("MCP request failed", withDebug(ctx, []any{
-			"request_id", id,
+			"request_id", requestID(id),
 			"session_id", extractSessionID(ctx),
-			"method", string(method),
+			"method", logging.Bounded(string(method)),
 			"error_class", classifyError(err),
 		}, "error", errorText(err), "message", toJSON(message))...)
 	})
 
 	hooks.AddAfterInitialize(func(ctx context.Context, id any, message *mcp.InitializeRequest, _ *mcp.InitializeResult) {
 		slog.Info("Client initialized", withDebug(ctx, []any{
-			"request_id", id,
+			"request_id", requestID(id),
 			"session_id", extractSessionID(ctx),
-			"protocol_version", message.Params.ProtocolVersion,
+			"protocol_version", logging.Bounded(message.Params.ProtocolVersion),
 		}, "client_name", message.Params.ClientInfo.Name, "client_version", message.Params.ClientInfo.Version)...)
 	})
 
@@ -173,9 +175,9 @@ func NewLoggerHooks() *server.Hooks {
 			level = slog.LevelWarn
 		}
 		slog.Log(ctx, level, "Tool called",
-			"request_id", id,
+			"request_id", requestID(id),
 			"session_id", extractSessionID(ctx),
-			"tool", message.Params.Name,
+			"tool", logging.Bounded(message.Params.Name),
 			"is_error", isError,
 		)
 	})
@@ -204,9 +206,17 @@ func Merge(hooksList ...*server.Hooks) *server.Hooks {
 
 func extractSessionID(ctx context.Context) string {
 	if session := server.ClientSessionFromContext(ctx); session != nil {
-		return session.SessionID()
+		return logging.Bounded(session.SessionID())
 	}
 	return ""
+}
+
+// requestID formats a client-chosen JSON-RPC request ID with a bounded length.
+func requestID(id any) string {
+	if id == nil {
+		return ""
+	}
+	return logging.Bounded(fmt.Sprint(id))
 }
 
 // withDebug appends the key/value pairs in debugKVs to args only when debug logging is
