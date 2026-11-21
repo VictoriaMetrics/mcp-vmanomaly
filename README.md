@@ -521,17 +521,16 @@ Add the following to your Gemini CLI `~/.gemini/settings.json` file:
 }
 ```
 
-To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`, pass the
-`MCP_AUTH_TOKEN` and any headers listed in `MCP_PASSTHROUGH_HEADERS`:
+To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`:
 
 ```sh
-gemini mcp add --transport http \
-  --header "Authorization: Bearer <MCP_AUTH_TOKEN>" \
-  --header "X-Vmanomaly-Instance: team-a" \
-  vmanomaly http://localhost:8080/mcp
+gemini mcp add --transport http vmanomaly http://localhost:8080/mcp
 ```
 
-The same in `settings.json` uses `httpUrl` (`url` selects the SSE transport in Gemini CLI):
+When the server requires `MCP_AUTH_TOKEN` or forwards headers listed in `MCP_PASSTHROUGH_HEADERS`, add them in
+your user-level `~/.gemini/settings.json` rather than on the command line or in a project's `.gemini/settings.json`,
+so the token does not end up in shell history or a repository. Gemini CLI uses `httpUrl` for Streamable HTTP
+(`url` selects SSE):
 
 ```json
 {
