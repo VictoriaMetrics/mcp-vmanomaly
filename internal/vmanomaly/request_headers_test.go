@@ -26,7 +26,7 @@ func TestRequestHeadersOverrideStaticHeaders(t *testing.T) {
 
 	ctx := WithRequestHeaders(context.Background(), http.Header{
 		"Authorization": {"Bearer user-token"},
-		"X-Tenant":      {"team-a"},
+		"x-tenant":      {"team-a"},
 		"Content-Type":  {"text/plain"},
 	})
 	if _, err := client.GetHealth(ctx); err != nil {
@@ -35,8 +35,8 @@ func TestRequestHeadersOverrideStaticHeaders(t *testing.T) {
 	if got.Get("Authorization") != "Bearer user-token" {
 		t.Errorf("Authorization = %q, want the forwarded token", got.Get("Authorization"))
 	}
-	if got.Get("X-Tenant") != "team-a" {
-		t.Errorf("X-Tenant = %q, want team-a", got.Get("X-Tenant"))
+	if values := got.Values("X-Tenant"); len(values) != 1 || values[0] != "team-a" {
+		t.Errorf("X-Tenant = %q, want only the forwarded team-a", values)
 	}
 	if got.Get("X-Static") != "kept" {
 		t.Errorf("X-Static = %q, want kept", got.Get("X-Static"))

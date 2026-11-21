@@ -714,6 +714,15 @@ func TestPassthroughHeaders(t *testing.T) {
 		}
 	})
 
+	for _, reserved := range []string{"content-type", "Host", "Transfer-Encoding"} {
+		t.Run("reserved "+reserved, func(t *testing.T) {
+			t.Setenv("MCP_PASSTHROUGH_HEADERS", "X-Tenant,"+reserved)
+			if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "cannot include") {
+				t.Fatalf("expected reserved header error, got %v", err)
+			}
+		})
+	}
+
 	t.Run("authorization cannot be forwarded with MCP auth", func(t *testing.T) {
 		t.Setenv("MCP_PASSTHROUGH_HEADERS", "X-Tenant,authorization")
 		t.Setenv("MCP_AUTH_TOKEN", "mcp-secret")
@@ -764,6 +773,14 @@ func TestAuthToken(t *testing.T) {
 		}
 		if cfg.AuthToken() != "file-token" {
 			t.Fatalf("AuthToken() = %q, want file-token", cfg.AuthToken())
+		}
+	})
+
+	t.Run("blank value fails instead of disabling auth", func(t *testing.T) {
+		t.Setenv("MCP_AUTH_TOKEN", "  ")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", "")
+		if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "MCP_AUTH_TOKEN is blank") {
+			t.Fatalf("expected blank token error, got %v", err)
 		}
 	})
 

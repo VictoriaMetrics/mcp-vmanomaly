@@ -2,6 +2,7 @@
 package auth
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
@@ -14,7 +15,8 @@ import (
 // "Authorization: Bearer <token>" on MCP endpoints. Health and metrics
 // endpoints stay public so probes and scrapers work without the token.
 func Middleware(token string) func(http.Handler) http.Handler {
-	expected := []byte(token)
+	// Comparing fixed-size digests keeps the check constant-time regardless of token length.
+	expected := sha256.Sum256([]byte(token))
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if isPublicPath(r.URL.Path) {
@@ -32,7 +34,8 @@ func Middleware(token string) func(http.Handler) http.Handler {
 				reject(w, r, "invalid Authorization header format")
 				return
 			}
-			if subtle.ConstantTimeCompare([]byte(credentials), expected) != 1 {
+			presented := sha256.Sum256([]byte(credentials))
+			if subtle.ConstantTimeCompare(presented[:], expected[:]) != 1 {
 				reject(w, r, "invalid token")
 				return
 			}

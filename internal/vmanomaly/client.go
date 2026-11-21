@@ -87,7 +87,7 @@ func (c *Client) doRequestLimited(ctx context.Context, method, path string, body
 	}
 
 	for key, values := range requestHeadersFromContext(ctx) {
-		req.Header[key] = values
+		req.Header[http.CanonicalHeaderKey(key)] = values
 	}
 
 	req.Header.Set("Content-Type", "application/json")

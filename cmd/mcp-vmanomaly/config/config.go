@@ -111,6 +111,10 @@ func InitConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if raw, set := os.LookupEnv("MCP_AUTH_TOKEN"); set && raw != "" && authToken == "" {
+		// A whitespace-only value, e.g. from an unset template variable, must not silently disable auth.
+		return nil, fmt.Errorf("MCP_AUTH_TOKEN is blank; unset it to disable authentication")
+	}
 	passthroughHeaders, err := parsePassthroughHeaders(os.Getenv("MCP_PASSTHROUGH_HEADERS"))
 	if err != nil {
 		return nil, err
@@ -207,6 +211,21 @@ func parseBoolEnv(name string) (bool, error) {
 	return parsed, nil
 }
 
+// reservedPassthroughHeaders are set by the HTTP client or describe the message
+// framing of each vmanomaly request, so they cannot be forwarded from MCP clients.
+var reservedPassthroughHeaders = map[string]bool{
+	"Connection":        true,
+	"Content-Length":    true,
+	"Content-Type":      true,
+	"Host":              true,
+	"Keep-Alive":        true,
+	"Proxy-Connection":  true,
+	"Te":                true,
+	"Trailer":           true,
+	"Transfer-Encoding": true,
+	"Upgrade":           true,
+}
+
 // parsePassthroughHeaders parses a comma-separated list of HTTP header names
 // and returns them in canonical form without duplicates.
 func parsePassthroughHeaders(value string) ([]string, error) {
@@ -220,6 +239,9 @@ func parsePassthroughHeaders(value string) ([]string, error) {
 			return nil, fmt.Errorf("MCP_PASSTHROUGH_HEADERS contains an invalid header name %q", name)
 		}
 		name = http.CanonicalHeaderKey(name)
+		if reservedPassthroughHeaders[name] {
+			return nil, fmt.Errorf("MCP_PASSTHROUGH_HEADERS cannot include %s; the server sets it for each vmanomaly request", name)
+		}
 		if !slices.Contains(headers, name) {
 			headers = append(headers, name)
 		}
