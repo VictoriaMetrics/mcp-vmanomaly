@@ -38,6 +38,8 @@ type Config struct {
 	requestTimeout time.Duration
 	tlsConfig      *tls.Config
 	tlsCAFile      string
+	tlsCertFile    string
+	tlsKeyFile     string
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -167,6 +169,8 @@ func InitConfig() (*Config, error) {
 		requestTimeout:             requestTimeout,
 		tlsConfig:                  tlsConfig,
 		tlsCAFile:                  tlsCAFile,
+		tlsCertFile:                strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE")),
+		tlsKeyFile:                 strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE")),
 	}
 
 	// Validate required config
@@ -301,8 +305,8 @@ func readSecret(valueEnv, fileEnv string) (string, error) {
 
 // readTLSConfig builds the TLS settings for calls to vmanomaly.
 // It returns nil when no TLS variables are set, keeping the system trust store.
-// The returned caFile is VMANOMALY_TLS_CA_FILE, which the client re-reads after rotation;
-// the client certificate files are re-read through GetClientCertificate.
+// The returned caFile is VMANOMALY_TLS_CA_FILE. The vmanomaly client re-reads it and the
+// client certificate files after rotation; see TLSFiles.
 func readTLSConfig() (cfg *tls.Config, caFile string, err error) {
 	caFile = strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_FILE"))
 	caCert := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_CERT"))
@@ -350,11 +354,11 @@ func readTLSConfig() (cfg *tls.Config, caFile string, err error) {
 		cfg.RootCAs = pool
 	}
 	if certFile != "" {
-		reloader, err := tlsfiles.NewCertReloader(certFile, keyFile)
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to load VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE: %w", err)
 		}
-		cfg.GetClientCertificate = reloader.GetClientCertificate
+		cfg.Certificates = []tls.Certificate{cert}
 	}
 	return cfg, caFile, nil
 }
@@ -466,14 +470,19 @@ func (c *Config) RequestTimeout() time.Duration {
 }
 
 // TLSConfig returns TLS settings for calls to vmanomaly, or nil to use the defaults.
-// A client certificate from files is served through GetClientCertificate and
-// reloaded after rotation.
+// It holds the material read at startup; TLSFiles names the files to reload.
 func (c *Config) TLSConfig() *tls.Config {
 	return c.tlsConfig
 }
 
-// TLSCAFile returns VMANOMALY_TLS_CA_FILE, which the vmanomaly client re-reads
-// after rotation, or "" when the CA is unset or given inline.
-func (c *Config) TLSCAFile() string {
-	return c.tlsCAFile
+// TLSFiles returns the CA bundle and client certificate files that the vmanomaly
+// client re-reads after rotation. An inline VMANOMALY_TLS_CA_CERT is not a file.
+func (c *Config) TLSFiles() tlsfiles.Files {
+	return tlsfiles.Files{
+		CAFile:     c.tlsCAFile,
+		CertFile:   c.tlsCertFile,
+		KeyFile:    c.tlsKeyFile,
+		CASource:   "VMANOMALY_TLS_CA_FILE",
+		CertSource: "VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE",
+	}
 }

@@ -6,12 +6,14 @@ package tlsfiles
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"sync"
 	"time"
 )
@@ -32,168 +34,150 @@ func CertPool(caPEM []byte, source string) (*x509.CertPool, error) {
 	return pool, nil
 }
 
-// fileWatch re-reads a set of files at most once per checkInterval and
-// reports when their content differs from the last accepted content.
-type fileWatch struct {
-	paths     []string
+// Files names the TLS files to watch. Empty paths are not used.
+type Files struct {
+	CAFile   string
+	CertFile string
+	KeyFile  string
+	// Setting names used in errors and logs, e.g. "VMANOMALY_TLS_CA_FILE".
+	CASource   string
+	CertSource string
+}
+
+func (f Files) paths() []string {
+	return []string{f.CAFile, f.CertFile, f.KeyFile}
+}
+
+// transport sends requests through a clone of base whose TLS settings come from
+// the watched files. When any file changes, the clone is rebuilt and idle
+// connections of the previous one are closed, so the next request performs a
+// new handshake with the new CA and client certificate.
+type transport struct {
+	base  *http.Transport
+	files Files
+
+	mu        sync.Mutex
 	lastCheck time.Time
-	contents  [][]byte
-	lastError string
+	applied   [][]byte // file contents of the active transport
+	rejected  string   // key of the last reported failure, see reject
+	current   *http.Transport
 }
 
-// poll returns the current file contents when they differ from the last accepted
-// content. It reports no change when the check interval has not elapsed or a file
-// cannot be read; a read failure is logged and retried after the interval.
-func (w *fileWatch) poll(now time.Time) (contents [][]byte, changed bool) {
-	if now.Sub(w.lastCheck) < checkInterval {
-		return nil, false
+// NewTransport returns a RoundTripper for base that reloads the CA bundle and the
+// client certificate and key from files. The CA extends the system roots. Files are
+// re-read at most once per second while requests are made; an invalid or half-written
+// rotation keeps the previous material and logs one warning per distinct file content.
+func NewTransport(base *http.Transport, files Files) (http.RoundTripper, error) {
+	if (files.CertFile == "") != (files.KeyFile == "") {
+		return nil, fmt.Errorf("%s requires both a certificate and a key file", files.CertSource)
 	}
-	w.lastCheck = now
-	contents = make([][]byte, len(w.paths))
-	for i, path := range w.paths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			w.reportError(fmt.Errorf("failed to read %s: %w", path, err))
-			return nil, false
-		}
-		contents[i] = data
-	}
-	for i := range contents {
-		if !bytes.Equal(contents[i], w.contents[i]) {
-			return contents, true
-		}
-	}
-	return nil, false
-}
-
-// accept records contents as the active version after they were applied.
-func (w *fileWatch) accept(contents [][]byte) {
-	w.contents = contents
-	w.lastError = ""
-}
-
-// reportError logs a reload failure once until the files change or reload succeeds,
-// so a broken file does not flood the log every second.
-func (w *fileWatch) reportError(err error) {
-	if msg := err.Error(); msg != w.lastError {
-		w.lastError = msg
-		slog.Warn("Failed to reload TLS files, keeping the previous version", "error", msg)
-	}
-}
-
-// CertReloader serves a client certificate from files and reloads it after rotation.
-type CertReloader struct {
-	mu    sync.Mutex
-	watch fileWatch
-	cert  *tls.Certificate
-}
-
-// NewCertReloader loads the certificate and key, failing if they are invalid.
-func NewCertReloader(certFile, keyFile string) (*CertReloader, error) {
-	certPEM, err := os.ReadFile(certFile)
+	t := &transport{base: base, files: files, lastCheck: time.Now()}
+	contents, err := t.read()
 	if err != nil {
 		return nil, err
 	}
-	keyPEM, err := os.ReadFile(keyFile)
+	current, err := t.build(contents)
 	if err != nil {
 		return nil, err
 	}
-	cert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		return nil, err
-	}
-	r := &CertReloader{cert: &cert, watch: fileWatch{paths: []string{certFile, keyFile}, lastCheck: time.Now()}}
-	r.watch.accept([][]byte{certPEM, keyPEM})
-	return r, nil
-}
-
-// GetClientCertificate implements tls.Config.GetClientCertificate. A certificate and
-// key that do not match, for example while a rotation is half written, keep the
-// previous certificate until the next check.
-func (r *CertReloader) GetClientCertificate(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if contents, changed := r.watch.poll(time.Now()); changed {
-		cert, err := tls.X509KeyPair(contents[0], contents[1])
-		if err != nil {
-			r.watch.reportError(fmt.Errorf("invalid client certificate or key: %w", err))
-		} else {
-			r.cert = &cert
-			r.watch.accept(contents)
-			slog.Info("Reloaded TLS client certificate", "file", r.watch.paths[0])
-		}
-	}
-	return r.cert, nil
-}
-
-// caTransport verifies servers against a CA file that may be rotated. A
-// tls.Config cannot change its roots per handshake, so a changed CA file
-// swaps in a cloned transport with the new pool.
-type caTransport struct {
-	base   *http.Transport
-	source string
-
-	mu      sync.Mutex
-	watch   fileWatch
-	current *http.Transport
-}
-
-// NewCATransport returns a RoundTripper that sends requests through a clone of base
-// whose RootCAs are the system roots plus the certificates in caFile. The file is
-// re-read at most once per second; when its content changes, new connections use
-// the new roots and idle connections to the old ones are closed.
-func NewCATransport(base *http.Transport, caFile, source string) (http.RoundTripper, error) {
-	caPEM, err := os.ReadFile(caFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read %s: %w", source, err)
-	}
-	t := &caTransport{base: base, source: source, watch: fileWatch{paths: []string{caFile}, lastCheck: time.Now()}}
-	current, err := t.transportFor(caPEM)
-	if err != nil {
-		return nil, err
-	}
-	t.current = current
-	t.watch.accept([][]byte{caPEM})
+	t.current, t.applied = current, contents
 	return t, nil
 }
 
-func (t *caTransport) transportFor(caPEM []byte) (*http.Transport, error) {
-	pool, err := CertPool(caPEM, t.source)
-	if err != nil {
-		return nil, err
+func (t *transport) read() ([][]byte, error) {
+	contents := make([][]byte, 3)
+	for i, path := range t.files.paths() {
+		if path == "" {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", path, err)
+		}
+		contents[i] = data
 	}
-	transport := t.base.Clone()
-	if transport.TLSClientConfig == nil {
-		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	}
-	transport.TLSClientConfig.RootCAs = pool
-	return transport, nil
+	return contents, nil
 }
 
-func (t *caTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	return t.transport().RoundTrip(req)
+func (t *transport) build(contents [][]byte) (*http.Transport, error) {
+	next := t.base.Clone()
+	if next.TLSClientConfig == nil {
+		next.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	if t.files.CAFile != "" {
+		pool, err := CertPool(contents[0], t.files.CASource)
+		if err != nil {
+			return nil, err
+		}
+		next.TLSClientConfig.RootCAs = pool
+	}
+	if t.files.CertFile != "" {
+		cert, err := tls.X509KeyPair(contents[1], contents[2])
+		if err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", t.files.CertSource, err)
+		}
+		// Certificates keeps Go's default selection, which honours the server's acceptable CAs.
+		next.TLSClientConfig.Certificates = []tls.Certificate{cert}
+		next.TLSClientConfig.GetClientCertificate = nil
+	}
+	return next, nil
 }
 
-func (t *caTransport) transport() *http.Transport {
+func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t.active().RoundTrip(req)
+}
+
+func (t *transport) active() *http.Transport {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if contents, changed := t.watch.poll(time.Now()); changed {
-		next, err := t.transportFor(contents[0])
-		if err != nil {
-			t.watch.reportError(err)
-		} else {
-			previous := t.current
-			t.current = next
-			t.watch.accept(contents)
-			previous.CloseIdleConnections()
-			slog.Info("Reloaded TLS CA file", "setting", t.source)
-		}
+	now := time.Now()
+	if now.Sub(t.lastCheck) < checkInterval {
+		return t.current
 	}
+	t.lastCheck = now
+
+	contents, err := t.read()
+	if err != nil {
+		t.reject(err.Error(), err)
+		return t.current
+	}
+	if slices.EqualFunc(contents, t.applied, bytes.Equal) {
+		return t.current
+	}
+	next, err := t.build(contents)
+	if err != nil {
+		t.reject(contentKey(contents), err)
+		return t.current
+	}
+	previous := t.current
+	t.current, t.applied, t.rejected = next, contents, ""
+	previous.CloseIdleConnections()
+	slog.Info("Reloaded TLS files", "ca_file", t.files.CAFile != "", "client_certificate", t.files.CertFile != "")
 	return t.current
 }
 
+// reject logs a failed reload once per key: the read error, or the content of files
+// that failed to load. A broken file does not flood the log every second, while each
+// new broken version is still reported.
+func (t *transport) reject(key string, err error) {
+	if key == t.rejected {
+		return
+	}
+	t.rejected = key
+	slog.Warn("Failed to reload TLS files, keeping the previous version", "error", err.Error())
+}
+
+func contentKey(contents [][]byte) string {
+	h := sha256.New()
+	for _, c := range contents {
+		_, _ = fmt.Fprintf(h, "%d:", len(c))
+		_, _ = h.Write(c)
+	}
+	return string(h.Sum(nil))
+}
+
 // CloseIdleConnections lets http.Client.CloseIdleConnections reach the active transport.
-func (t *caTransport) CloseIdleConnections() {
+func (t *transport) CloseIdleConnections() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.current.CloseIdleConnections()

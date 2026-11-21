@@ -58,18 +58,19 @@ func (c *Client) SetTLSConfig(cfg *tls.Config) error {
 	return nil
 }
 
-// SetTLSCAFile makes the client verify vmanomaly against the system roots plus the
-// CA certificates in caFile, re-reading the file at most once per second so a
-// rotated CA is used without a restart. Call it after SetTLSConfig.
-func (c *Client) SetTLSCAFile(caFile string) error {
-	if caFile == "" {
+// SetTLSFiles makes the client re-read the CA bundle and client certificate files at
+// most once per second, so rotated files are used without a restart. When a file
+// changes, idle connections are closed and the next request performs a new handshake.
+// Call it after SetTLSConfig. Without any file it keeps the current transport.
+func (c *Client) SetTLSFiles(files tlsfiles.Files) error {
+	if files.CAFile == "" && files.CertFile == "" {
 		return nil
 	}
 	transport, ok := c.httpClient.Transport.(*http.Transport)
 	if !ok || transport == nil {
-		return fmt.Errorf("cannot reload VMANOMALY_TLS_CA_FILE: SetTLSConfig must configure the transport first")
+		return fmt.Errorf("cannot reload TLS files: SetTLSConfig must configure the transport first")
 	}
-	reloading, err := tlsfiles.NewCATransport(transport, caFile, "VMANOMALY_TLS_CA_FILE")
+	reloading, err := tlsfiles.NewTransport(transport, files)
 	if err != nil {
 		return err
 	}

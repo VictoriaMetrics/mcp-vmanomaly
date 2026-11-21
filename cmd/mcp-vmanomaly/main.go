@@ -339,7 +339,7 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 	if err := client.SetTLSConfig(c.TLSConfig()); err != nil {
 		return nil, err
 	}
-	if err := client.SetTLSCAFile(c.TLSCAFile()); err != nil {
+	if err := client.SetTLSFiles(c.TLSFiles()); err != nil {
 		return nil, err
 	}
 	tools.RegisterTools(mcpServer, client)

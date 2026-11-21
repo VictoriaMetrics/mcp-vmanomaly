@@ -3,6 +3,7 @@ package tlsfiles
 import (
 	"bytes"
 	"crypto/tls"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -63,14 +64,13 @@ func okHandler() http.Handler {
 
 func newClient(t *testing.T, files testtls.PKI) *http.Client {
 	t.Helper()
-	certs, err := NewCertReloader(files.ClientCert, files.ClientKey)
+	base := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12}}
+	transport, err := NewTransport(base, Files{
+		CAFile: files.CAFile, CertFile: files.ClientCert, KeyFile: files.ClientKey,
+		CASource: "TEST_CA_FILE", CertSource: "TEST_CERT_FILE",
+	})
 	if err != nil {
-		t.Fatalf("NewCertReloader failed: %v", err)
-	}
-	base := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, GetClientCertificate: certs.GetClientCertificate}}
-	transport, err := NewCATransport(base, files.CAFile, "TEST_CA_FILE")
-	if err != nil {
-		t.Fatalf("NewCATransport failed: %v", err)
+		t.Fatalf("NewTransport failed: %v", err)
 	}
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
 	t.Cleanup(client.CloseIdleConnections)
@@ -106,7 +106,6 @@ func TestRotatedCAAndClientCertificateAreUsedWithoutRestart(t *testing.T) {
 	if err := get(client, newServer.URL); err != nil {
 		t.Fatalf("request after rotation failed: %v", err)
 	}
-	client.CloseIdleConnections()
 	if err := get(client, oldServer.URL); err == nil {
 		t.Fatal("the old CA must no longer be trusted after rotation")
 	}
@@ -143,41 +142,78 @@ func TestInvalidRotationKeepsPreviousMaterial(t *testing.T) {
 	copyFile(t, otherPKI.ClientCert, files.ClientCert)
 
 	for range 3 {
-		client.CloseIdleConnections()
 		if err := get(client, server.URL); err != nil {
 			t.Fatalf("request with the previous material failed: %v", err)
 		}
 	}
 	output := logs.String()
-	if got := strings.Count(output, "contains no PEM certificates"); got != 1 {
-		t.Errorf("CA failure logged %d times, want once:\n%s", got, output)
+	if got := strings.Count(output, "Failed to reload TLS files"); got != 1 {
+		t.Errorf("failure logged %d times for one broken version, want once:\n%s", got, output)
 	}
-	if got := strings.Count(output, "invalid client certificate or key"); got != 1 {
-		t.Errorf("certificate failure logged %d times, want once:\n%s", got, output)
+
+	// A different broken version is reported again.
+	if err := os.WriteFile(files.CAFile, []byte("still not a certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := get(client, server.URL); err != nil {
+		t.Fatalf("request with the previous material failed: %v", err)
+	}
+	if got := strings.Count(logs.String(), "Failed to reload TLS files"); got != 2 {
+		t.Errorf("failure logged %d times for two broken versions, want twice:\n%s", got, logs.String())
 	}
 
 	// Completing the rotation recovers.
 	copyFile(t, pki.CAFile, files.CAFile)
 	copyFile(t, pki.ClientCert, files.ClientCert)
-	client.CloseIdleConnections()
 	if err := get(client, server.URL); err != nil {
 		t.Fatalf("request after a completed rotation failed: %v", err)
+	}
+}
+
+func TestClientCertificateRotationReplacesKeepAliveConnection(t *testing.T) {
+	setCheckInterval(t, 0)
+	// The server reports which client certificate the connection presented.
+	server, pki := testtls.NewMTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.TLS.PeerCertificates[0].SerialNumber.String()))
+	}))
+	files := mounted(t, pki)
+	client := newClient(t, files)
+
+	serial := func() string {
+		t.Helper()
+		resp, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return string(body)
+	}
+	before := serial()
+
+	// Reissue a client certificate from the same CA, with a new serial, and rotate it in place.
+	other := testtls.IssueClientCert(t, t.TempDir(), pki, 99)
+	copyFile(t, other.ClientCert, files.ClientCert)
+	copyFile(t, other.ClientKey, files.ClientKey)
+
+	if after := serial(); after == before || after != "99" {
+		t.Fatalf("client certificate serial after rotation = %s, want 99 (before %s)", after, before)
 	}
 }
 
 func TestConstructorsRejectInvalidFiles(t *testing.T) {
 	pki := testtls.WritePKI(t, t.TempDir())
 	missing := filepath.Join(t.TempDir(), "missing.pem")
-	if _, err := NewCertReloader(missing, pki.ClientKey); err == nil {
-		t.Error("expected an error for a missing certificate")
-	}
-	if _, err := NewCertReloader(pki.ServerCert, pki.ClientKey); err == nil {
-		t.Error("expected an error for a mismatched key")
-	}
-	if _, err := NewCATransport(&http.Transport{}, missing, "TEST_CA_FILE"); err == nil {
-		t.Error("expected an error for a missing CA file")
-	}
-	if _, err := NewCATransport(&http.Transport{}, pki.ClientKey, "TEST_CA_FILE"); err == nil || !strings.Contains(err.Error(), "TEST_CA_FILE") {
-		t.Errorf("expected a no-certificates error naming the setting, got %v", err)
+	base := &http.Transport{}
+	for name, files := range map[string]Files{
+		"missing certificate": {CertFile: missing, KeyFile: pki.ClientKey},
+		"mismatched key":      {CertFile: pki.ServerCert, KeyFile: pki.ClientKey},
+		"certificate only":    {CertFile: pki.ClientCert},
+		"missing CA":          {CAFile: missing},
+		"CA without certs":    {CAFile: pki.ClientKey, CASource: "TEST_CA_FILE"},
+	} {
+		if _, err := NewTransport(base, files); err == nil {
+			t.Errorf("%s: expected an error", name)
+		}
 	}
 }

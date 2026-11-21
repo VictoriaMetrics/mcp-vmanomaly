@@ -23,6 +23,7 @@ import (
 // PKI holds paths to PEM files of a disposable CA and its certificates.
 type PKI struct {
 	CAFile     string
+	CAKeyFile  string
 	ServerCert string
 	ServerKey  string
 	ClientCert string
@@ -51,8 +52,13 @@ func WritePKI(t *testing.T, dir string) PKI {
 		t.Fatalf("failed to parse CA: %v", err)
 	}
 
-	pki := PKI{CAFile: filepath.Join(dir, "ca.pem")}
+	pki := PKI{CAFile: filepath.Join(dir, "ca.pem"), CAKeyFile: filepath.Join(dir, "ca.key")}
 	writePEM(t, pki.CAFile, "CERTIFICATE", caDER)
+	caKeyDER, err := x509.MarshalPKCS8PrivateKey(caKey)
+	if err != nil {
+		t.Fatalf("failed to marshal CA key: %v", err)
+	}
+	writePEM(t, pki.CAKeyFile, "PRIVATE KEY", caKeyDER)
 	pki.ServerCert, pki.ServerKey = issue(t, dir, "server", caCert, caKey, x509.ExtKeyUsageServerAuth, 2)
 	pki.ClientCert, pki.ClientKey = issue(t, dir, "client", caCert, caKey, x509.ExtKeyUsageClientAuth, 3)
 	return pki
@@ -83,6 +89,27 @@ func NewMTLSServer(t *testing.T, handler http.Handler) (*httptest.Server, PKI) {
 	server.StartTLS()
 	t.Cleanup(server.Close)
 	return server, pki
+}
+
+// IssueClientCert issues another client certificate with the given serial from the
+// PKI CA into dir and returns its paths in ClientCert and ClientKey.
+func IssueClientCert(t *testing.T, dir string, pki PKI, serial int64) PKI {
+	t.Helper()
+	ca, err := tls.LoadX509KeyPair(pki.CAFile, pki.CAKeyFile)
+	if err != nil {
+		t.Fatalf("failed to load CA: %v", err)
+	}
+	caCert, err := x509.ParseCertificate(ca.Certificate[0])
+	if err != nil {
+		t.Fatalf("failed to parse CA: %v", err)
+	}
+	caKey, ok := ca.PrivateKey.(*ecdsa.PrivateKey)
+	if !ok {
+		t.Fatalf("unexpected CA key type %T", ca.PrivateKey)
+	}
+	issued := pki
+	issued.ClientCert, issued.ClientKey = issue(t, dir, "client", caCert, caKey, x509.ExtKeyUsageClientAuth, serial)
+	return issued
 }
 
 func issue(t *testing.T, dir, name string, ca *x509.Certificate, caKey *ecdsa.PrivateKey, usage x509.ExtKeyUsage, serial int64) (string, string) {
