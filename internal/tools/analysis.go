@@ -74,12 +74,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 	characteristicsTool := mcp.NewTool(
 		"vmanomaly_timeseries_characteristics",
 		mcp.WithDescription("Profile a sampled set of time series returned by a query. Returns compact batch characteristics such as detected seasonalities, trend share, flatness/spikiness, coverage, and sampling stats. Use this before recommending a model from data rather than from a manual description."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Profile Time Series Characteristics",
-			ReadOnlyHint:    ptr(true),
-			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
-		}),
+		readOnlyAnnotation("Profile Time Series Characteristics", false),
 		inputSchema[TimeseriesCharacteristicsArgs](),
 	)
 	s.AddTool(characteristicsTool, typedToolHandler(handleTimeseriesCharacteristics(client)))
@@ -100,12 +95,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 	getAutotuneTool := mcp.NewTool(
 		"vmanomaly_get_autotune_task",
 		mcp.WithDescription("Get a shared autotune task. While status is running, wait briefly before polling again and never issue concurrent duplicate polls. When status is done, use result_data.data.modelConfig and related result_data fields. Treat error and canceled as terminal."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Get Shared Autotune Task",
-			ReadOnlyHint:    ptr(true),
-			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
-		}),
+		readOnlyAnnotation("Get Shared Autotune Task", false),
 		inputSchema[AutotuneTaskStatusArgs](),
 	)
 	s.AddTool(getAutotuneTool, typedToolHandler(handleGetAutotuneTask(client)))

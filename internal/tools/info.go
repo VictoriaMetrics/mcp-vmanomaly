@@ -21,36 +21,21 @@ func RegisterInfoTools(s *server.MCPServer, client *vmanomaly.Client) {
 	getBuildinfoTool := mcp.NewTool(
 		"vmanomaly_get_buildinfo",
 		mcp.WithDescription("Get vmanomaly server build information including version number, build timestamp, and Go version. Use this to verify server version, check compatibility, or troubleshoot issues by confirming which version is running."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Get vmanomaly Server Build Info",
-			ReadOnlyHint:    ptr(true),
-			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
-		}),
+		readOnlyAnnotation("Get vmanomaly Server Build Info", false),
 	)
 	s.AddTool(getBuildinfoTool, handleGetBuildinfo(client))
 
 	getQueriesTool := mcp.NewTool(
 		"vmanomaly_get_server_queries",
 		mcp.WithDescription("Get query aliases and MetricsQL/LogsQL expressions configured on the running vmanomaly server."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Get vmanomaly Server Queries",
-			ReadOnlyHint:    ptr(true),
-			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
-		}),
+		readOnlyAnnotation("Get vmanomaly Server Queries", false),
 	)
 	s.AddTool(getQueriesTool, handleGetServerQueries(client))
 
 	getMetricsTool := mcp.NewTool(
 		"vmanomaly_get_metrics",
 		mcp.WithDescription("Get currently instant Prometheus-formatted self-monitoring metrics from vmanomaly server. Returns operational metrics including reader/writer performance, model execution stats, system info, and resource usage. Output is in standard Prometheus text exposition format suitable for scraping or monitoring analysis."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Get vmanomaly Server Self-Monitoring Metrics",
-			ReadOnlyHint:    ptr(true),
-			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
-		}),
+		readOnlyAnnotation("Get vmanomaly Server Self-Monitoring Metrics", false),
 	)
 	s.AddTool(getMetricsTool, handleGetMetrics(client))
 }
