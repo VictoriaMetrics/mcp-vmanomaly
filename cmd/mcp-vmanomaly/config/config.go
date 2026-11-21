@@ -25,6 +25,8 @@ type Config struct {
 	// disableLocalhostProtection turns off DNS-rebinding protection for loopback connections
 	disableLocalhostProtection bool
 	logLevel                   string
+	logFormat                  string
+	instructionsOverride       string
 	logFile                    string
 	bearerToken                string
 	customHeaders              map[string]string
@@ -153,6 +155,8 @@ func InitConfig() (*Config, error) {
 		stateless:                  stateless,
 		disableLocalhostProtection: disableLocalhostProtection,
 		logLevel:                   strings.ToLower(os.Getenv("MCP_LOG_LEVEL")),
+		logFormat:                  strings.ToLower(strings.TrimSpace(os.Getenv("MCP_LOG_FORMAT"))),
+		instructionsOverride:       strings.TrimSpace(os.Getenv("MCP_INSTRUCTIONS_OVERRIDE")),
 		logFile:                    os.Getenv("MCP_LOG_FILE"),
 		bearerToken:                bearerToken,
 		customHeaders:              customHeadersMap,
@@ -184,6 +188,10 @@ func InitConfig() (*Config, error) {
 		return nil, fmt.Errorf("MCP_LOG_LEVEL must be 'debug', 'info', 'warn', or 'error'")
 	}
 
+	if result.logFormat != "" && result.logFormat != "text" && result.logFormat != "json" {
+		return nil, fmt.Errorf("MCP_LOG_FORMAT must be 'text' or 'json'")
+	}
+
 	// Default values
 	if result.serverMode == "" {
 		result.serverMode = "stdio"
@@ -193,6 +201,9 @@ func InitConfig() (*Config, error) {
 	}
 	if result.logLevel == "" {
 		result.logLevel = "info"
+	}
+	if result.logFormat == "" {
+		result.logFormat = "text"
 	}
 
 	return result, nil
@@ -411,6 +422,17 @@ func (c *Config) HeartbeatInterval() time.Duration {
 
 func (c *Config) LogLevel() string {
 	return c.logLevel
+}
+
+// LogFormat returns the log output format: "text" or "json".
+func (c *Config) LogFormat() string {
+	return c.logFormat
+}
+
+// InstructionsOverride returns text that replaces the default MCP server instructions.
+// Empty means the default instructions are used.
+func (c *Config) InstructionsOverride() string {
+	return c.instructionsOverride
 }
 
 func (c *Config) LogFile() string {

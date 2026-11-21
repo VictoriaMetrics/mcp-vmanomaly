@@ -157,8 +157,10 @@ MCP Server for vmanomaly is configured via environment variables:
 | `MCP_PASSTHROUGH_HEADERS` | HTTP header names to forward from incoming MCP requests to vmanomaly (comma-separated list). Overrides `VMANOMALY_HEADERS` on collision; a forwarded `Authorization` replaces the one built from `VMANOMALY_BEARER_TOKEN`. Cannot include `Authorization` when `MCP_AUTH_TOKEN` is set, nor headers the server sets itself (`Content-Type`, `Host`, `Content-Length` and other hop-by-hop headers). Only applies in `sse`/`http` modes | No | - | - |
 | `MCP_STATELESS`          | Run the Streamable HTTP server in stateless mode: `Mcp-Session-Id` values are ignored instead of validated. Useful behind a gateway that injects its own session IDs. `GET /mcp` then answers `405`, as no standalone notification stream is offered. Only applies in `http` mode | No | `false` | `false`, `true` |
 | `MCP_DISABLE_LOCALHOST_PROTECTION` | Disable the DNS-rebinding guard that answers `403` to a request arriving over a loopback connection whose `Host` header is not a localhost value. Needed when a same-host proxy or sidecar forwards over `127.0.0.1` and keeps the original `Host`. Applies in `http` and `sse` modes | No | `false` | `false`, `true` |
-| `MCP_LOG_LEVEL`          | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                      | No       | `info`           | -                      |
+| `MCP_LOG_LEVEL`          | Minimum log level. `debug` also logs MCP request and result payloads, raw errors and client names; see [Security](#security) | No | `info` | `debug`, `info`, `warn`, `error` |
+| `MCP_LOG_FORMAT`         | Log output format; `json` suits Kubernetes log collectors                                              | No       | `text`           | `text`, `json`         |
 | `MCP_LOG_FILE`           | Log file path (empty = stderr)                                                                          | No       | `stderr`         | -                      |
+| `MCP_INSTRUCTIONS_OVERRIDE` | Text that fully replaces the default MCP server instructions sent to clients. The defaults target VMUI Copilot and the preset workflow; override them to describe your instance, environment or conventions | No | - | - |
 
 ### Connecting to vmanomaly over HTTPS
 
@@ -223,7 +225,11 @@ export MCP_LISTEN_ADDR="0.0.0.0:8080"
 
 # Logging
 export MCP_LOG_LEVEL="debug"
+export MCP_LOG_FORMAT="json"
 export MCP_LOG_FILE="/tmp/mcp-vmanomaly.log"
+
+# Replace the default instructions sent to MCP clients
+export MCP_INSTRUCTIONS_OVERRIDE="This server connects to the staging vmanomaly installation of team A."
 ```
 
 ## Endpoints
@@ -279,8 +285,12 @@ the caller's trusted-domain vmanomaly installation:
   allowlist retains backward compatibility by enabling every registered tool.
 - `MCP_DISABLE_RESOURCES=true` hides resource discovery and reads. The documentation-search tool
   remains independent and can be separately disabled with the tool policy.
-- Logs and metrics intentionally omit tool arguments/results, raw errors, client metadata, and
-  resource URIs. Treat MCP responses and downstream vmanomaly logs as sensitive nevertheless.
+- At `info` level and above, logs and metrics intentionally omit tool arguments/results, raw
+  errors, client metadata, and resource URIs; failures are logged with a bounded `error_class`.
+  `MCP_LOG_LEVEL=debug` adds request and result payloads, raw errors and client names to the
+  logs, so enable it only for troubleshooting and treat such logs as secrets. The HTTP access log
+  records method, path (without query string), status, size, duration, remote address and MCP
+  session ID. Treat MCP responses and downstream vmanomaly logs as sensitive nevertheless.
 
 These controls reduce the MCP server's exposure but do not create tenant isolation. Treat one
 logical vmanomaly installation, including its replicas or shards, as one trusted domain. Route

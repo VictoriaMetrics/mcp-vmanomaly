@@ -213,3 +213,47 @@ func TestTypedToolsAcceptWholeNumberFloats(t *testing.T) {
 		t.Fatalf("a fractional limit must not bind to an int field: %#v", result)
 	}
 }
+
+func TestInstructionsOverrideReplacesDefaults(t *testing.T) {
+	initialize := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}`
+	instructionsOf := func(t *testing.T) string {
+		t.Helper()
+		cfg := testConfig(t, "", "", true)
+		s, err := newMCPServer(cfg, metrics.NewSet(), false)
+		if err != nil {
+			t.Fatalf("newMCPServer failed: %v", err)
+		}
+		result := handleMessage(t, s, initialize)["result"].(map[string]any)
+		text, _ := result["instructions"].(string)
+		return text
+	}
+
+	t.Setenv("MCP_INSTRUCTIONS_OVERRIDE", "")
+	if got := instructionsOf(t); !strings.Contains(got, "show_business_boundaries") || !strings.Contains(got, resources.PresetGuideInstructions) {
+		t.Fatalf("default instructions missing expected content: %q", got)
+	}
+
+	t.Setenv("MCP_INSTRUCTIONS_OVERRIDE", "Use the staging vmanomaly only.")
+	if got := instructionsOf(t); got != "Use the staging vmanomaly only." {
+		t.Fatalf("instructions = %q, want the override", got)
+	}
+}
+
+func TestDebugLogsIncludeToolPayloads(t *testing.T) {
+	cfg := testConfig(t, "vmanomaly_search_docs", "", true)
+	mcpServer, err := newMCPServer(cfg, metrics.NewSet(), true)
+	if err != nil {
+		t.Fatalf("newMCPServer failed: %v", err)
+	}
+
+	var logOutput bytes.Buffer
+	originalLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logOutput, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(originalLogger) })
+
+	marker := "debug-payload-marker"
+	handleMessage(t, mcpServer, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"vmanomaly_search_docs","arguments":{"query":"`+marker+`","limit":1}}}`)
+	if !strings.Contains(logOutput.String(), marker) {
+		t.Fatalf("debug logs do not contain the tool arguments:\n%s", logOutput.String())
+	}
+}

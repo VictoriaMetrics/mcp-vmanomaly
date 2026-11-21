@@ -804,3 +804,35 @@ func TestAuthToken(t *testing.T) {
 		}
 	})
 }
+
+func TestLogFormatAndInstructionsOverride(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("MCP_INSTRUCTIONS_OVERRIDE", "")
+
+	t.Setenv("MCP_LOG_FORMAT", "")
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if cfg.LogFormat() != "text" || cfg.InstructionsOverride() != "" {
+		t.Fatalf("unexpected defaults: format=%q override=%q", cfg.LogFormat(), cfg.InstructionsOverride())
+	}
+
+	t.Setenv("MCP_LOG_FORMAT", " JSON ")
+	t.Setenv("MCP_INSTRUCTIONS_OVERRIDE", "  Use the staging vmanomaly.\n")
+	cfg, err = InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if cfg.LogFormat() != "json" {
+		t.Fatalf("LogFormat() = %q, want json", cfg.LogFormat())
+	}
+	if cfg.InstructionsOverride() != "Use the staging vmanomaly." {
+		t.Fatalf("InstructionsOverride() = %q", cfg.InstructionsOverride())
+	}
+
+	t.Setenv("MCP_LOG_FORMAT", "logfmt")
+	if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "MCP_LOG_FORMAT") {
+		t.Fatalf("expected MCP_LOG_FORMAT error, got %v", err)
+	}
+}
