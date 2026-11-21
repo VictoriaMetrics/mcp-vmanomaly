@@ -34,7 +34,7 @@ func newStreamableHTTPHandler(t *testing.T, stateless, disableLocalhostProtectio
 	if err != nil {
 		t.Fatalf("newMCPServer failed: %v", err)
 	}
-	return server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(cfg)...)
+	return streamableHTTPHandler(cfg, server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(cfg)...))
 }
 
 func TestStreamableHTTPLocalhostProtection(t *testing.T) {
@@ -112,5 +112,24 @@ func TestSSELocalhostProtection(t *testing.T) {
 				t.Fatalf("status = %d, want %d; body: %s", rec.Code, tc.wantStatus, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestStreamableHTTPStatelessRejectsGETStreams(t *testing.T) {
+	handler := newStreamableHTTPHandler(t, "true", "")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, loopbackRequest(http.MethodGet, "/mcp", "", "localhost:8080"))
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("stateless GET status = %d, want 405", rec.Code)
+	}
+	if allow := rec.Header().Get("Allow"); !strings.Contains(allow, "POST") {
+		t.Fatalf("Allow = %q, want POST", allow)
+	}
+
+	// POST keeps working in stateless mode.
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, loopbackRequest(http.MethodPost, "/mcp", initializeRequest, "localhost:8080"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stateless POST status = %d, want 200: %s", rec.Code, rec.Body.String())
 	}
 }
