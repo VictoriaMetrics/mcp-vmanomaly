@@ -126,11 +126,13 @@ func TestStreamableHTTPStatelessRejectsGETStreams(t *testing.T) {
 		t.Fatalf("Allow = %q, want %q", allow, "POST, DELETE, HEAD")
 	}
 
-	// Every method listed in Allow must actually be accepted.
-	rec = httptest.NewRecorder()
-	handler.ServeHTTP(rec, loopbackRequest(http.MethodHead, "/mcp", "", "localhost:8080"))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("stateless HEAD status = %d, want 200", rec.Code)
+	// The other methods listed in Allow must be accepted (POST is checked below).
+	for _, method := range []string{http.MethodDelete, http.MethodHead} {
+		rec = httptest.NewRecorder()
+		handler.ServeHTTP(rec, loopbackRequest(method, "/mcp", "", "localhost:8080"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("stateless %s status = %d, want 200", method, rec.Code)
+		}
 	}
 
 	// POST keeps working in stateless mode.
