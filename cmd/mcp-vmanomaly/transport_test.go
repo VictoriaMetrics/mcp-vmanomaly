@@ -122,8 +122,15 @@ func TestStreamableHTTPStatelessRejectsGETStreams(t *testing.T) {
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("stateless GET status = %d, want 405", rec.Code)
 	}
-	if allow := rec.Header().Get("Allow"); !strings.Contains(allow, "POST") {
-		t.Fatalf("Allow = %q, want POST", allow)
+	if allow := rec.Header().Get("Allow"); allow != "POST, DELETE, HEAD" {
+		t.Fatalf("Allow = %q, want %q", allow, "POST, DELETE, HEAD")
+	}
+
+	// Every method listed in Allow must actually be accepted.
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, loopbackRequest(http.MethodHead, "/mcp", "", "localhost:8080"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stateless HEAD status = %d, want 200", rec.Code)
 	}
 
 	// POST keeps working in stateless mode.

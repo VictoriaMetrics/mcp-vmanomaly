@@ -249,7 +249,8 @@ func streamableHTTPHandler(c *config.Config, srv http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			w.Header().Set("Allow", "POST, DELETE")
+			// mcp-go answers HEAD with 200, so it stays in the list.
+			w.Header().Set("Allow", "POST, DELETE, HEAD")
 			http.Error(w, "GET streams are not available in stateless mode", http.StatusMethodNotAllowed)
 			return
 		}
