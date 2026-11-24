@@ -18,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/auth"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/config"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/hooks"
+	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/logging"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/promts"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/resources"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/tools"
@@ -92,22 +93,10 @@ func serve(c *config.Config, stderr io.Writer) error {
 		defer logFile.Close()
 	}
 
-	var logLevel slog.Level
-	switch c.LogLevel() {
-	case "debug":
-		logLevel = slog.LevelDebug
-	case "warn":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	default:
-		logLevel = slog.LevelInfo
+	logger, err := logging.New(logOutput, c.LogFormat(), c.LogLevel())
+	if err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
 	}
-
-	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
-	slog.SetDefault(logger)
 
 	if !c.IsStdio() {
 		slog.Info("Starting server", "name", serverName, "version", version, "date", date)
@@ -117,14 +106,14 @@ func serve(c *config.Config, stderr io.Writer) error {
 	}
 
 	ms := metrics.NewSet()
-	mcpServer, err := newMCPServer(c, ms, logLevel <= slog.LevelDebug)
+	mcpServer, err := newMCPServer(c, ms, logging.ParseLevel(c.LogLevel()) <= slog.LevelDebug)
 	if err != nil {
 		return fmt.Errorf("failed to initialize MCP server: %w", err)
 	}
 
 	// Stdio mode - simple execution
 	if c.IsStdio() {
-		if err := server.ServeStdio(mcpServer); err != nil {
+		if err := server.ServeStdio(mcpServer, server.WithErrorLogger(logger.StdLogger())); err != nil {
 			return fmt.Errorf("failed to serve stdio: %w", err)
 		}
 		return nil
@@ -245,7 +234,8 @@ func newHTTPHandler(c *config.Config, mcpServer *server.MCPServer, ms *metrics.S
 		slog.Info("MCP client authentication enabled")
 		handler = auth.Middleware(authToken)(handler)
 	}
-	return handler, nil
+	// The access log wraps authentication so rejected requests are logged too.
+	return logging.Middleware(handler), nil
 }
 
 func sseOptions(c *config.Config) []server.SSEOption {
@@ -259,6 +249,7 @@ func sseOptions(c *config.Config) []server.SSEOption {
 func streamableHTTPOptions(c *config.Config) []server.StreamableHTTPOption {
 	opts := []server.StreamableHTTPOption{
 		server.WithHeartbeatInterval(c.HeartbeatInterval()),
+		server.WithStreamableHTTPLogger(slog.Default()),
 	}
 	if c.Stateless() {
 		// Without session IDs every standalone GET stream shares one empty session
@@ -288,6 +279,14 @@ func passthroughHeaders(names []string, incoming http.Header) http.Header {
 	return forwarded
 }
 
+// instructions returns MCP_INSTRUCTIONS_OVERRIDE when set, or the default instructions.
+func instructions(c *config.Config) string {
+	if override := c.InstructionsOverride(); override != "" {
+		return override
+	}
+	return serverInstructions + "\n" + resources.PresetGuideInstructions
+}
+
 var errToolUnavailable = errors.New("requested tool is not available")
 
 func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool) (*server.MCPServer, error) {
@@ -314,8 +313,8 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 		server.WithRecovery(),
 		server.WithToolCapabilities(true),
 		server.WithPromptCapabilities(false),
-		server.WithInstructions(serverInstructions + "\n" + resources.PresetGuideInstructions),
-		server.WithHooks(hooks.New(ms)),
+		server.WithInstructions(instructions(c)),
+		server.WithHooks(hooks.Merge(hooks.New(ms), hooks.NewLoggerHooks())),
 		toolFilter,
 		toolPolicy,
 	}
