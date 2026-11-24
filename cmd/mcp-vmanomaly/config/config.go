@@ -19,12 +19,15 @@ type Config struct {
 	disabledTools     map[string]bool
 	heartbeatInterval time.Duration
 	disableResources  bool
-	logLevel          string
-	logFile           string
-	bearerToken       string
-	customHeaders     map[string]string
-	requestTimeout    time.Duration
-	tlsConfig         *tls.Config
+	stateless         bool
+	// disableLocalhostProtection turns off DNS-rebinding protection for loopback connections
+	disableLocalhostProtection bool
+	logLevel                   string
+	logFile                    string
+	bearerToken                string
+	customHeaders              map[string]string
+	requestTimeout             time.Duration
+	tlsConfig                  *tls.Config
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -80,15 +83,17 @@ func InitConfig() (*Config, error) {
 		heartbeatInterval = interval
 	}
 
-	// Parse disable resources
-	disableResources := false
-	disableResourcesStr := os.Getenv("MCP_DISABLE_RESOURCES")
-	if disableResourcesStr != "" {
-		var err error
-		disableResources, err = strconv.ParseBool(disableResourcesStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse MCP_DISABLE_RESOURCES: %w", err)
-		}
+	disableResources, err := parseBoolEnv("MCP_DISABLE_RESOURCES")
+	if err != nil {
+		return nil, err
+	}
+	stateless, err := parseBoolEnv("MCP_STATELESS")
+	if err != nil {
+		return nil, err
+	}
+	disableLocalhostProtection, err := parseBoolEnv("MCP_DISABLE_LOCALHOST_PROTECTION")
+	if err != nil {
+		return nil, err
 	}
 
 	customHeadersMap := parseCustomHeaders(os.Getenv("VMANOMALY_HEADERS"))
@@ -116,19 +121,21 @@ func InitConfig() (*Config, error) {
 	}
 
 	result := &Config{
-		vmanomalyEndpoint: os.Getenv("VMANOMALY_ENDPOINT"),
-		serverMode:        strings.ToLower(os.Getenv("MCP_SERVER_MODE")),
-		listenAddr:        os.Getenv("MCP_LISTEN_ADDR"),
-		enabledTools:      enabledToolsMap,
-		disabledTools:     disabledToolsMap,
-		heartbeatInterval: heartbeatInterval,
-		disableResources:  disableResources,
-		logLevel:          strings.ToLower(os.Getenv("MCP_LOG_LEVEL")),
-		logFile:           os.Getenv("MCP_LOG_FILE"),
-		bearerToken:       bearerToken,
-		customHeaders:     customHeadersMap,
-		requestTimeout:    requestTimeout,
-		tlsConfig:         tlsConfig,
+		vmanomalyEndpoint:          os.Getenv("VMANOMALY_ENDPOINT"),
+		serverMode:                 strings.ToLower(os.Getenv("MCP_SERVER_MODE")),
+		listenAddr:                 os.Getenv("MCP_LISTEN_ADDR"),
+		enabledTools:               enabledToolsMap,
+		disabledTools:              disabledToolsMap,
+		heartbeatInterval:          heartbeatInterval,
+		disableResources:           disableResources,
+		stateless:                  stateless,
+		disableLocalhostProtection: disableLocalhostProtection,
+		logLevel:                   strings.ToLower(os.Getenv("MCP_LOG_LEVEL")),
+		logFile:                    os.Getenv("MCP_LOG_FILE"),
+		bearerToken:                bearerToken,
+		customHeaders:              customHeadersMap,
+		requestTimeout:             requestTimeout,
+		tlsConfig:                  tlsConfig,
 	}
 
 	// Validate required config
@@ -165,6 +172,19 @@ func InitConfig() (*Config, error) {
 	}
 
 	return result, nil
+}
+
+// parseBoolEnv parses an optional boolean environment variable; unset or empty means false.
+func parseBoolEnv(name string) (bool, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return false, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse %s: %w", name, err)
+	}
+	return parsed, nil
 }
 
 func readBearerToken() (string, error) {
@@ -293,6 +313,19 @@ func (c *Config) IsToolEnabled(toolName string) bool {
 
 func (c *Config) IsResourcesDisabled() bool {
 	return c.disableResources
+}
+
+// Stateless reports whether the Streamable HTTP server ignores Mcp-Session-Id
+// values instead of validating them. It applies only in http mode.
+func (c *Config) Stateless() bool {
+	return c.stateless
+}
+
+// DisableLocalhostProtection reports whether the DNS-rebinding guard is off.
+// The guard rejects a loopback request whose Host header is not a localhost value.
+// It applies in sse and http modes.
+func (c *Config) DisableLocalhostProtection() bool {
+	return c.disableLocalhostProtection
 }
 
 func (c *Config) HeartbeatInterval() time.Duration {

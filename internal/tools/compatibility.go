@@ -40,8 +40,8 @@ func RegisterCompatibilityTools(s *server.MCPServer, client *vmanomaly.Client) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[CheckCompatibilityArgs](),
-		mcp.WithOutputSchema[CheckCompatibilityResponse](),
+		inputSchema[CheckCompatibilityArgs](),
+		outputSchema[CheckCompatibilityResponse](),
 	)
 	s.AddTool(checkCompatibilityTool, mcp.NewStructuredToolHandler(handleCheckCompatibility(client)))
 }

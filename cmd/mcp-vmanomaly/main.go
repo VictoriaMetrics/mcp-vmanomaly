@@ -164,14 +164,15 @@ func serve(c *config.Config, stderr io.Writer) error {
 	// Server mode-specific handlers
 	switch c.ServerMode() {
 	case "sse":
-		slog.Info("Starting server in SSE mode", "addr", c.ListenAddr())
-		srv := server.NewSSEServer(mcpServer)
+		slog.Info("Starting server in SSE mode", "addr", c.ListenAddr(),
+			"localhost_protection", !c.DisableLocalhostProtection())
+		srv := server.NewSSEServer(mcpServer, sseOptions(c)...)
 		mux.Handle(srv.CompleteSsePath(), srv.SSEHandler())
 		mux.Handle(srv.CompleteMessagePath(), srv.MessageHandler())
 	case "http":
-		slog.Info("Starting server in HTTP mode", "addr", c.ListenAddr())
-		heartBeatOption := server.WithHeartbeatInterval(c.HeartbeatInterval())
-		srv := server.NewStreamableHTTPServer(mcpServer, heartBeatOption)
+		slog.Info("Starting server in HTTP mode", "addr", c.ListenAddr(),
+			"stateless", c.Stateless(), "localhost_protection", !c.DisableLocalhostProtection())
+		srv := server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(c)...)
 		mux.Handle("/mcp", srv)
 	default:
 		return fmt.Errorf("unknown server mode %q", c.ServerMode())
@@ -228,6 +229,31 @@ func serve(c *config.Config, stderr io.Writer) error {
 
 	slog.Info("Server stopped")
 	return nil
+}
+
+func sseOptions(c *config.Config) []server.SSEOption {
+	var opts []server.SSEOption
+	if c.DisableLocalhostProtection() {
+		opts = append(opts, server.WithSSEDisableLocalhostProtection(true))
+	}
+	return opts
+}
+
+func streamableHTTPOptions(c *config.Config) []server.StreamableHTTPOption {
+	opts := []server.StreamableHTTPOption{
+		server.WithHeartbeatInterval(c.HeartbeatInterval()),
+	}
+	if c.Stateless() {
+		// Without session IDs every standalone GET stream shares one empty session
+		// key, so one client disconnecting would unregister another client's stream
+		// (mark3labs/mcp-go#1327). mcp-go then answers GET with 405, after its own
+		// Host, CORS and protocol-version checks.
+		opts = append(opts, server.WithStateLess(true), server.WithDisableStreaming(true))
+	}
+	if c.DisableLocalhostProtection() {
+		opts = append(opts, server.WithDisableLocalhostProtection(true))
+	}
+	return opts
 }
 
 var errToolUnavailable = errors.New("requested tool is not available")

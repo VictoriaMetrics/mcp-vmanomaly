@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -642,5 +643,37 @@ func TestTLSConfigRejectsHTTP(t *testing.T) {
 	t.Setenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY", "false")
 	if _, err := InitConfig(); err != nil {
 		t.Fatalf("HTTP without active TLS settings: %v", err)
+	}
+}
+
+func TestHTTPTransportFlags(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	for _, name := range []string{"MCP_STATELESS", "MCP_DISABLE_LOCALHOST_PROTECTION"} {
+		t.Run(name+" defaults to false", func(t *testing.T) {
+			t.Setenv(name, "")
+			cfg, err := InitConfig()
+			if err != nil {
+				t.Fatalf("InitConfig failed: %v", err)
+			}
+			if cfg.Stateless() || cfg.DisableLocalhostProtection() {
+				t.Fatalf("flags enabled by default: stateless=%t disableLocalhostProtection=%t", cfg.Stateless(), cfg.DisableLocalhostProtection())
+			}
+		})
+		t.Run(name+" rejects invalid values", func(t *testing.T) {
+			t.Setenv(name, "maybe")
+			if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), name) {
+				t.Fatalf("expected a %s parse error, got %v", name, err)
+			}
+		})
+	}
+
+	t.Setenv("MCP_STATELESS", "true")
+	t.Setenv("MCP_DISABLE_LOCALHOST_PROTECTION", "1")
+	cfg, err := InitConfig()
+	if err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if !cfg.Stateless() || !cfg.DisableLocalhostProtection() {
+		t.Fatalf("flags not applied: stateless=%t disableLocalhostProtection=%t", cfg.Stateless(), cfg.DisableLocalhostProtection())
 	}
 }

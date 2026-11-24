@@ -32,7 +32,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
   - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for schedule replay in shared autotune, experimental peer-group tuning and deployment sizing
   - version [1.32.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1320)+ for metric discovery and dynamic preset artifacts, including Compose, Helm and VM Operator deployment files
-- Go 1.26.11 or higher (if building from source)
+- Go 1.27.4 or higher (if building from source)
 
 ## Installation
 
@@ -152,6 +152,8 @@ MCP Server for vmanomaly is configured via environment variables:
 | `MCP_DISABLED_TOOLS`     | Comma-separated tool denylist; takes precedence over the allowlist                                     | No       | -                | -                      |
 | `MCP_DISABLE_RESOURCES`  | Disable all resources (documentation search will continue to work)                                      | No       | `false`          | `false`, `true`        |
 | `MCP_HEARTBEAT_INTERVAL` | Heartbeat interval for streamable-http protocol (keeps connection alive through network infrastructure) | No       | `30s`            | -                      |
+| `MCP_STATELESS`          | Run the Streamable HTTP server in stateless mode: `Mcp-Session-Id` values are ignored instead of validated. Useful behind a gateway that injects its own session IDs. `GET /mcp` then answers `405`, as no standalone notification stream is offered. Only applies in `http` mode | No | `false` | `false`, `true` |
+| `MCP_DISABLE_LOCALHOST_PROTECTION` | Disable the DNS-rebinding guard that answers `403` to a request arriving over a loopback connection whose `Host` header is not a localhost value. Needed when a same-host proxy or sidecar forwards over `127.0.0.1` and keeps the original `Host`. Applies in `http` and `sse` modes | No | `false` | `false`, `true` |
 | `MCP_LOG_LEVEL`          | Log level: `debug` (verbose), `info` (default), `warn`, or `error`                                      | No       | `info`           | -                      |
 | `MCP_LOG_FILE`           | Log file path (empty = stderr)                                                                          | No       | `stderr`         | -                      |
 
@@ -172,6 +174,13 @@ MCP Server supports the following modes of operation (transports):
 > Specification [(version 2025-03-26)](https://modelcontextprotocol.io/specification/2025-03-26/changelog#major-changes)
 > and was replaced by Streamable HTTP transport (`http` mode).
 > In future releases its support can be deprecated, use Streamable HTTP transport if your client supports it.
+
+> [!NOTE]
+> Some platforms, such as AWS Bedrock AgentCore Runtime, inject their own `Mcp-Session-Id`
+> header and keep the original non-localhost `Host` header while forwarding over `127.0.0.1`.
+> With default settings the server rejects such session IDs and answers `403` from the DNS-rebinding guard,
+> so tool discovery fails. Set `MCP_STATELESS=true` and `MCP_DISABLE_LOCALHOST_PROTECTION=true` together with
+> `MCP_SERVER_MODE=http` for that setup, and keep both disabled for direct or local use.
 
 More info about transports you can find in MCP docs:
 

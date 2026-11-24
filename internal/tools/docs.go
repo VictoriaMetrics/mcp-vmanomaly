@@ -39,13 +39,13 @@ func RegisterDocsTool(s *server.MCPServer) {
 			DestructiveHint: ptr(false),
 			OpenWorldHint:   ptr(false),
 		}),
-		mcp.WithInputSchema[SearchDocsArgs](),
+		inputSchema[SearchDocsArgs](),
 	)
-	s.AddTool(searchDocsTool, mcp.NewTypedToolHandler(handleSearchDocs()))
+	s.AddTool(searchDocsTool, typedToolHandler(handleSearchDocs()))
 	s.AddTool(mcp.NewTool("vmanomaly_read_doc_section",
 		mcp.WithDescription("Read a bounded documentation section by source URI and character offset returned by search. Follow next_offset for continuation; fetch relevant sections before relying on truncated guidance."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{ReadOnlyHint: ptr(true), DestructiveHint: ptr(false), OpenWorldHint: ptr(false)}),
-		mcp.WithInputSchema[ReadDocArgs]()), mcp.NewTypedToolHandler(handleReadDocSection))
+		inputSchema[ReadDocArgs]()), typedToolHandler(handleReadDocSection))
 }
 
 // ============================================================================

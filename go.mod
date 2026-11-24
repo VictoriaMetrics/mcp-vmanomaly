@@ -1,11 +1,12 @@
 module github.com/VictoriaMetrics/mcp-vmanomaly
 
-go 1.26.11
+go 1.27.4
 
 require (
 	github.com/VictoriaMetrics/metrics v1.40.2
 	github.com/blevesearch/bleve/v2 v2.5.5
-	github.com/mark3labs/mcp-go v0.43.0
+	github.com/invopop/jsonschema v0.13.0
+	github.com/mark3labs/mcp-go v1.6.0
 	github.com/tmc/langchaingo v0.1.14
 )
 
@@ -31,16 +32,17 @@ require (
 	github.com/blevesearch/zapx/v15 v15.4.2 // indirect
 	github.com/blevesearch/zapx/v16 v16.2.7 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
-	github.com/dlclark/regexp2 v1.10.0 // indirect
+	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
