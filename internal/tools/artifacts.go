@@ -30,7 +30,7 @@ func RegisterArtifactTools(s *server.MCPServer, client *vmanomaly.Client) {
 		mcp.WithDescription("Render matching vmanomaly configuration and vmalert rules from a complete configuration. Preserves query policies and model/scheduler mappings. Supply a public incident base URL for investigation annotations. Schema-valid does not mean live-tested; retain all warnings. Requires the artifact API; do not retry unsupported targets or infer writer destinations."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{ReadOnlyHint: ptr(true), DestructiveHint: ptr(false), OpenWorldHint: ptr(false)}),
 		inputSchema[ArtifactArgs]())
-	s.AddTool(tool, mcp.NewTypedToolHandler(handleGenerateArtifacts(client)))
+	s.AddTool(tool, typedToolHandler(handleGenerateArtifacts(client)))
 }
 
 func handleGenerateArtifacts(client *vmanomaly.Client) func(context.Context, mcp.CallToolRequest, ArtifactArgs) (*mcp.CallToolResult, error) {

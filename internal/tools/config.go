@@ -43,7 +43,7 @@ func RegisterConfigTools(s *server.MCPServer, client *vmanomaly.Client) {
 		mcp.WithDescription("Validate the schema of a complete vmanomaly YAML configuration. Takes a full configuration object (with reader, schedulers, models, writer sections) and returns validation result with normalized config or error details. Schema validation does not establish deployment readiness; perform separate deployment rendering and live checks."),
 		inputSchema[ValidateConfigArgs](),
 	)
-	s.AddTool(validateConfigTool, mcp.NewTypedToolHandler(handleValidateConfig(client)))
+	s.AddTool(validateConfigTool, typedToolHandler(handleValidateConfig(client)))
 }
 
 // ============================================================================

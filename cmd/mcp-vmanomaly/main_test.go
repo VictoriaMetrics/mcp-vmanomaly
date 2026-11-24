@@ -184,3 +184,32 @@ func TestPresetGuideToolWorksWithResourcesDisabled(t *testing.T) {
 		t.Fatalf("missing guide content: %v", result)
 	}
 }
+
+// mcp-go v1 binds the raw JSON arguments directly; whole numbers sent as floats
+// must still bind to int fields, as they did with mcp-go v0.43.
+func TestTypedToolsAcceptWholeNumberFloats(t *testing.T) {
+	cfg := testConfig(t, "vmanomaly_read_doc_section", "", true)
+	mcpServer, err := newMCPServer(cfg, metrics.NewSet(), false)
+	if err != nil {
+		t.Fatalf("newMCPServer failed: %v", err)
+	}
+	found, err := resources.SearchDocResources("prophet", 1)
+	if err != nil || len(found) == 0 {
+		t.Fatalf("no documentation resource to read: %v", err)
+	}
+	call := func(offset, limit string) map[string]any {
+		t.Helper()
+		response := handleMessage(t, mcpServer, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"vmanomaly_read_doc_section","arguments":{"uri":"`+found[0].URI+`","offset":`+offset+`,"limit":`+limit+`}}}`)
+		result, ok := response["result"].(map[string]any)
+		if !ok {
+			t.Fatalf("tools/call failed: %#v", response)
+		}
+		return result
+	}
+	if result := call("0.0", "100.0"); result["isError"] == true {
+		t.Fatalf("whole-number floats were rejected: %#v", result)
+	}
+	if result := call("0", "100.5"); result["isError"] != true {
+		t.Fatalf("a fractional limit must not bind to an int field: %#v", result)
+	}
+}

@@ -32,7 +32,7 @@ func RegisterAlertTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[GenerateAlertRuleArgs](),
 	)
-	s.AddTool(generateAlertRuleTool, mcp.NewTypedToolHandler(handleGenerateAlertRule(client)))
+	s.AddTool(generateAlertRuleTool, typedToolHandler(handleGenerateAlertRule(client)))
 }
 
 func handleGenerateAlertRule(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args GenerateAlertRuleArgs) (*mcp.CallToolResult, error) {

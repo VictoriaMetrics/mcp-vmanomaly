@@ -66,7 +66,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[GetModelSchemaArgs](),
 	)
-	s.AddTool(getModelSchemaTool, mcp.NewTypedToolHandler(handleGetModelSchema(client)))
+	s.AddTool(getModelSchemaTool, typedToolHandler(handleGetModelSchema(client)))
 
 	validateModelConfigTool := mcp.NewTool(
 		"vmanomaly_validate_model_config",
@@ -79,7 +79,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[ValidateModelConfigArgs](),
 	)
-	s.AddTool(validateModelConfigTool, mcp.NewTypedToolHandler(handleValidateModelConfig(client)))
+	s.AddTool(validateModelConfigTool, typedToolHandler(handleValidateModelConfig(client)))
 }
 
 // ============================================================================

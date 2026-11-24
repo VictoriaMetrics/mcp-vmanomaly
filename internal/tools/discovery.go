@@ -27,7 +27,7 @@ func RegisterDiscoveryTools(s *server.MCPServer, client *vmanomaly.Client) {
 		mcp.WithDescription("Discover scoped metric names, labels or series using one bounded request. Supply selectors and a fixed time window. Returned counts are not exact cardinality; preserve completeness and warnings. Requires the discovery API; 404 means unsupported, not an empty inventory. No automatic retries or tenant enumeration."),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{ReadOnlyHint: ptr(true), DestructiveHint: ptr(false), OpenWorldHint: ptr(true)}),
 		inputSchema[DiscoveryArgs]())
-	s.AddTool(tool, mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args DiscoveryArgs) (*mcp.CallToolResult, error) {
+	s.AddTool(tool, typedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args DiscoveryArgs) (*mcp.CallToolResult, error) {
 		data, err := client.Discover(ctx, vmanomaly.DiscoveryRequest{
 			Operation:       args.Operation,
 			DatasourceURL:   args.DatasourceURL,

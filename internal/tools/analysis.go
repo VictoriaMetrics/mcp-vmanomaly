@@ -82,7 +82,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[TimeseriesCharacteristicsArgs](),
 	)
-	s.AddTool(characteristicsTool, mcp.NewTypedToolHandler(handleTimeseriesCharacteristics(client)))
+	s.AddTool(characteristicsTool, typedToolHandler(handleTimeseriesCharacteristics(client)))
 
 	createAutotuneTool := mcp.NewTool(
 		"vmanomaly_create_autotune_task",
@@ -95,7 +95,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[AutotuneTaskArgs](),
 	)
-	s.AddTool(createAutotuneTool, mcp.NewTypedToolHandler(handleCreateAutotuneTask(client)))
+	s.AddTool(createAutotuneTool, typedToolHandler(handleCreateAutotuneTask(client)))
 
 	getAutotuneTool := mcp.NewTool(
 		"vmanomaly_get_autotune_task",
@@ -108,7 +108,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[AutotuneTaskStatusArgs](),
 	)
-	s.AddTool(getAutotuneTool, mcp.NewTypedToolHandler(handleGetAutotuneTask(client)))
+	s.AddTool(getAutotuneTool, typedToolHandler(handleGetAutotuneTask(client)))
 
 	cancelAutotuneTool := mcp.NewTool(
 		"vmanomaly_cancel_autotune_task",
@@ -121,7 +121,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 		}),
 		inputSchema[AutotuneTaskIDArgs](),
 	)
-	s.AddTool(cancelAutotuneTool, mcp.NewTypedToolHandler(handleCancelAutotuneTask(client)))
+	s.AddTool(cancelAutotuneTool, typedToolHandler(handleCancelAutotuneTask(client)))
 }
 
 func handleTimeseriesCharacteristics(client *vmanomaly.Client) func(ctx context.Context, req mcp.CallToolRequest, args TimeseriesCharacteristicsArgs) (*mcp.CallToolResult, error) {

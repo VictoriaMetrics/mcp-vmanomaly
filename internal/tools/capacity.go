@@ -61,7 +61,7 @@ func capacityResult(ctx context.Context, client *vmanomaly.Client, operation str
 func handleCapacityEstimate(client *vmanomaly.Client) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		var args CapacityEstimateArgs
-		if err := req.BindArguments(&args); err != nil {
+		if err := bindArguments(req, &args); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 		if len(args.Workloads) == 0 || len(args.Workloads) > 16 {
@@ -114,7 +114,7 @@ func handleCapacityEstimate(client *vmanomaly.Client) server.ToolHandlerFunc {
 func handleCapacityThroughput(client *vmanomaly.Client) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		var args CapacityThroughputArgs
-		if err := req.BindArguments(&args); err != nil {
+		if err := bindArguments(req, &args); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 		if args.ModelClass == "" || args.CPUs < 1 || args.CPUs > 256 || args.InferEverySeconds <= 0 || (args.RAMLimitBytes != nil && *args.RAMLimitBytes <= 0) {
