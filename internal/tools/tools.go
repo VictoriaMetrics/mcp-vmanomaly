@@ -14,7 +14,7 @@ import (
 func RegisterTools(s *server.MCPServer, client *vmanomaly.Client) {
 	healthTool := mcp.NewTool("vmanomaly_health_check",
 		mcp.WithDescription("Check the health status of the vmanomaly server"),
-		readOnlyAnnotation("vmanomaly Server Health Check", false),
+		readOnlyAnnotation("vmanomaly Server Health Check", true),
 	)
 	s.AddTool(healthTool, handleHealthCheck(client))
 

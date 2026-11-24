@@ -26,31 +26,33 @@ func TestHealthCheck_Error(t *testing.T) {
 
 func TestEveryToolHasTitleAndExpectedHints(t *testing.T) {
 	type hints struct{ readOnly, destructive, openWorld bool }
-	readOnly := hints{readOnly: true}
+	// Tools that call vmanomaly or a datasource are open-world; only embedded docs and guides are not.
+	remoteReadOnly := hints{readOnly: true, openWorld: true}
+	embeddedReadOnly := hints{readOnly: true}
 	want := map[string]hints{
-		"vmanomaly_health_check":                   readOnly,
-		"vmanomaly_get_buildinfo":                  readOnly,
-		"vmanomaly_get_server_queries":             readOnly,
-		"vmanomaly_get_metrics":                    readOnly,
-		"vmanomaly_list_models":                    readOnly,
-		"vmanomaly_get_server_models":              readOnly,
-		"vmanomaly_get_model_schema":               readOnly,
-		"vmanomaly_validate_model_config":          readOnly,
-		"vmanomaly_validate_config":                readOnly,
-		"vmanomaly_generate_preset_artifacts":      readOnly,
-		"vmanomaly_get_preset_guide":               readOnly,
-		"vmanomaly_estimate_deployment_resources":  readOnly,
-		"vmanomaly_estimate_inference_capacity":    readOnly,
-		"vmanomaly_get_deployment_sizing_profiles": readOnly,
-		"vmanomaly_discover_metrics":               {readOnly: true, openWorld: true},
-		"vmanomaly_check_compatibility":            readOnly,
-		"vmanomaly_generate_alert_rule":            readOnly,
-		"vmanomaly_timeseries_characteristics":     readOnly,
-		"vmanomaly_create_autotune_task":           {},
-		"vmanomaly_get_autotune_task":              readOnly,
-		"vmanomaly_cancel_autotune_task":           {destructive: true},
-		"vmanomaly_search_docs":                    readOnly,
-		"vmanomaly_read_doc_section":               readOnly,
+		"vmanomaly_health_check":                   remoteReadOnly,
+		"vmanomaly_get_buildinfo":                  remoteReadOnly,
+		"vmanomaly_get_server_queries":             remoteReadOnly,
+		"vmanomaly_get_metrics":                    remoteReadOnly,
+		"vmanomaly_list_models":                    remoteReadOnly,
+		"vmanomaly_get_server_models":              remoteReadOnly,
+		"vmanomaly_get_model_schema":               remoteReadOnly,
+		"vmanomaly_validate_model_config":          remoteReadOnly,
+		"vmanomaly_validate_config":                remoteReadOnly,
+		"vmanomaly_generate_preset_artifacts":      remoteReadOnly,
+		"vmanomaly_get_preset_guide":               embeddedReadOnly,
+		"vmanomaly_estimate_deployment_resources":  remoteReadOnly,
+		"vmanomaly_estimate_inference_capacity":    remoteReadOnly,
+		"vmanomaly_get_deployment_sizing_profiles": remoteReadOnly,
+		"vmanomaly_discover_metrics":               remoteReadOnly,
+		"vmanomaly_check_compatibility":            remoteReadOnly,
+		"vmanomaly_generate_alert_rule":            remoteReadOnly,
+		"vmanomaly_timeseries_characteristics":     remoteReadOnly,
+		"vmanomaly_create_autotune_task":           {openWorld: true},
+		"vmanomaly_get_autotune_task":              remoteReadOnly,
+		"vmanomaly_cancel_autotune_task":           {destructive: true, openWorld: true},
+		"vmanomaly_search_docs":                    embeddedReadOnly,
+		"vmanomaly_read_doc_section":               embeddedReadOnly,
 	}
 
 	s := server.NewMCPServer("test", "1")

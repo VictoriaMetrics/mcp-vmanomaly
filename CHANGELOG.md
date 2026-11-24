@@ -18,7 +18,7 @@ published as the corresponding GitHub release notes.
 
 - Updated `github.com/mark3labs/mcp-go` from v0.43.0 to v1.6.0, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers. Tool input and output schemas keep their properties, constraints and descriptions; tools without arguments now advertise explicit empty `properties` and `required` fields.
 - Updated the build toolchain to Go 1.27.4, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers.
-- Added annotation titles to all tools and marked `vmanomaly_validate_config` as read-only and non-destructive; it previously inherited the default destructive, open-world hints. A test now requires every tool to set a title and explicit hints.
+- Added annotation titles to all tools and marked `vmanomaly_validate_config` as read-only and non-destructive; it previously inherited the default destructive hint. Every tool that calls vmanomaly or a datasource now sets `openWorldHint: true`, as in the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers; only `vmanomaly_get_preset_guide`, `vmanomaly_search_docs` and `vmanomaly_read_doc_section`, which serve embedded content, stay closed-world. A test now requires every tool to set a title and explicit hints.
 
 ### Breaking changes
 

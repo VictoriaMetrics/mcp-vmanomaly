@@ -24,7 +24,7 @@ func RegisterAlertTools(s *server.MCPServer, client *vmanomaly.Client) {
 	generateAlertRuleTool := mcp.NewTool(
 		"vmanomaly_generate_alert_rule",
 		mcp.WithDescription("Generate a VMAlert rule YAML configuration for anomaly score alerting. Creates an example vmalert rule that triggers when anomaly_score exceeds the threshold. Use this to set up alerting for anomalies detected by vmanomaly."),
-		readOnlyAnnotation("Generate VMAlert Rule", false),
+		readOnlyAnnotation("Generate VMAlert Rule", true),
 		inputSchema[GenerateAlertRuleArgs](),
 	)
 	s.AddTool(generateAlertRuleTool, typedToolHandler(handleGenerateAlertRule(client)))

@@ -74,7 +74,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 	characteristicsTool := mcp.NewTool(
 		"vmanomaly_timeseries_characteristics",
 		mcp.WithDescription("Profile a sampled set of time series returned by a query. Returns compact batch characteristics such as detected seasonalities, trend share, flatness/spikiness, coverage, and sampling stats. Use this before recommending a model from data rather than from a manual description."),
-		readOnlyAnnotation("Profile Time Series Characteristics", false),
+		readOnlyAnnotation("Profile Time Series Characteristics", true),
 		inputSchema[TimeseriesCharacteristicsArgs](),
 	)
 	s.AddTool(characteristicsTool, typedToolHandler(handleTimeseriesCharacteristics(client)))
@@ -86,7 +86,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			Title:           "Create Shared Autotune Task",
 			ReadOnlyHint:    ptr(false),
 			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
+			OpenWorldHint:   ptr(true),
 		}),
 		inputSchema[AutotuneTaskArgs](),
 	)
@@ -95,7 +95,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 	getAutotuneTool := mcp.NewTool(
 		"vmanomaly_get_autotune_task",
 		mcp.WithDescription("Get a shared autotune task. While status is running, wait briefly before polling again and never issue concurrent duplicate polls. When status is done, use result_data.data.modelConfig and related result_data fields. Treat error and canceled as terminal."),
-		readOnlyAnnotation("Get Shared Autotune Task", false),
+		readOnlyAnnotation("Get Shared Autotune Task", true),
 		inputSchema[AutotuneTaskStatusArgs](),
 	)
 	s.AddTool(getAutotuneTool, typedToolHandler(handleGetAutotuneTask(client)))
@@ -107,7 +107,7 @@ func RegisterAnalysisTools(s *server.MCPServer, client *vmanomaly.Client) {
 			Title:           "Cancel Shared Autotune Task",
 			ReadOnlyHint:    ptr(false),
 			DestructiveHint: ptr(true),
-			OpenWorldHint:   ptr(false),
+			OpenWorldHint:   ptr(true),
 		}),
 		inputSchema[AutotuneTaskIDArgs](),
 	)

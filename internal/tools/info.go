@@ -21,21 +21,21 @@ func RegisterInfoTools(s *server.MCPServer, client *vmanomaly.Client) {
 	getBuildinfoTool := mcp.NewTool(
 		"vmanomaly_get_buildinfo",
 		mcp.WithDescription("Get vmanomaly server build information including version number, build timestamp, and Go version. Use this to verify server version, check compatibility, or troubleshoot issues by confirming which version is running."),
-		readOnlyAnnotation("Get vmanomaly Server Build Info", false),
+		readOnlyAnnotation("Get vmanomaly Server Build Info", true),
 	)
 	s.AddTool(getBuildinfoTool, handleGetBuildinfo(client))
 
 	getQueriesTool := mcp.NewTool(
 		"vmanomaly_get_server_queries",
 		mcp.WithDescription("Get query aliases and MetricsQL/LogsQL expressions configured on the running vmanomaly server."),
-		readOnlyAnnotation("Get vmanomaly Server Queries", false),
+		readOnlyAnnotation("Get vmanomaly Server Queries", true),
 	)
 	s.AddTool(getQueriesTool, handleGetServerQueries(client))
 
 	getMetricsTool := mcp.NewTool(
 		"vmanomaly_get_metrics",
 		mcp.WithDescription("Get currently instant Prometheus-formatted self-monitoring metrics from vmanomaly server. Returns operational metrics including reader/writer performance, model execution stats, system info, and resource usage. Output is in standard Prometheus text exposition format suitable for scraping or monitoring analysis."),
-		readOnlyAnnotation("Get vmanomaly Server Self-Monitoring Metrics", false),
+		readOnlyAnnotation("Get vmanomaly Server Self-Monitoring Metrics", true),
 	)
 	s.AddTool(getMetricsTool, handleGetMetrics(client))
 }

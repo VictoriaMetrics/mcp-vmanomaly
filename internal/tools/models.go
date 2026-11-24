@@ -34,21 +34,21 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 	listModelsTool := mcp.NewTool(
 		"vmanomaly_list_models",
 		mcp.WithDescription("List model types exposed to VMUI and other UI-oriented configuration flows. Use this before selecting a model in UI, then call vmanomaly_get_model_schema. Experimental multivariate models may be included depending on the connected server version. Use its response as the source of truth."),
-		readOnlyAnnotation("List vmanomaly Models", false),
+		readOnlyAnnotation("List vmanomaly Models", true),
 	)
 	s.AddTool(listModelsTool, handleListModels(client))
 
 	getServerModelsTool := mcp.NewTool(
 		"vmanomaly_get_server_models",
 		mcp.WithDescription("Get configured server models and their query attachments. Returns runtime model aliases, model configuration, attached queries, and model metadata from the vmanomaly server."),
-		readOnlyAnnotation("Get Server Models", false),
+		readOnlyAnnotation("Get Server Models", true),
 	)
 	s.AddTool(getServerModelsTool, handleGetServerModels(client))
 
 	getModelSchemaTool := mcp.NewTool(
 		"vmanomaly_get_model_schema",
 		mcp.WithDescription("Get the complete JSON schema for a UI-compatible model type returned by vmanomaly_list_models. Returns parameters, types, validation rules, defaults, and descriptions. Multivariate models are intentionally unavailable from this UI-oriented endpoint; configure them outside VMUI using documentation and validate the complete model config."),
-		readOnlyAnnotation("Get Model Schema", false),
+		readOnlyAnnotation("Get Model Schema", true),
 		inputSchema[GetModelSchemaArgs](),
 	)
 	s.AddTool(getModelSchemaTool, typedToolHandler(handleGetModelSchema(client)))
@@ -56,7 +56,7 @@ func RegisterModelTools(s *server.MCPServer, client *vmanomaly.Client) {
 	validateModelConfigTool := mcp.NewTool(
 		"vmanomaly_validate_model_config",
 		mcp.WithDescription("Validate the schema of an anomaly detection model configuration. This does not assess model fit, data compatibility or deployment readiness. Returns validation result with the normalized/validated configuration or detailed error messages if invalid. Use this after building your model config to catch configuration errors before creating a detection task with vmanomaly_create_detection_task."),
-		readOnlyAnnotation("Validate Model Config", false),
+		readOnlyAnnotation("Validate Model Config", true),
 		inputSchema[ValidateModelConfigArgs](),
 	)
 	s.AddTool(validateModelConfigTool, typedToolHandler(handleValidateModelConfig(client)))
