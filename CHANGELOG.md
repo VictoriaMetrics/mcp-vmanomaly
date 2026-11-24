@@ -13,10 +13,11 @@ published as the corresponding GitHub release notes.
 ### Improvements
 
 - Updated `github.com/mark3labs/mcp-go` from v0.43.0 to v1.6.0, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers. Tool input and output schemas keep their properties, constraints and descriptions; tools without arguments now advertise explicit empty `properties` and `required` fields.
+- Updated the build toolchain to Go 1.27.4, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers.
 
 ### Breaking changes
 
-- With mcp-go v1, `http` and `sse` modes reject a request that arrives over a loopback connection with a non-localhost `Host` header (`403`), and the Streamable HTTP transport rejects `Mcp-Session-Id` values it did not issue. Set `MCP_DISABLE_LOCALHOST_PROTECTION=true` and/or `MCP_STATELESS=true` for proxies and gateways that rely on either behavior.
+- With mcp-go v1, `http` and `sse` modes reject a request that arrives over a loopback connection with a non-localhost `Host` header (`403`). Set `MCP_DISABLE_LOCALHOST_PROTECTION=true` for same-host proxies that keep the original `Host` header.
 
 ## [v0.6.1] - 2026-11-20
 
