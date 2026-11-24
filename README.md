@@ -32,7 +32,7 @@ The MCP server contains embedded up-to-date `vmanomaly` documentation and is abl
   - version [1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305)+ for named-query shared autotune and query-policy suggestions in VMUI
   - version [1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310)+ for schedule replay in shared autotune, experimental peer-group tuning and deployment sizing
   - version [1.32.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1320)+ for metric discovery and dynamic preset artifacts, including Compose, Helm and VM Operator deployment files
-- Go 1.26.11 or higher (if building from source)
+- Go 1.27.4 or higher (if building from source)
 
 ## Installation
 
