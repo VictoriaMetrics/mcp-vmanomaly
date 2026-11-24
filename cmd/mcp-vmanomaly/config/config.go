@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/tlsfiles"
 )
 
 type Config struct {
@@ -36,6 +37,9 @@ type Config struct {
 	authToken      string
 	requestTimeout time.Duration
 	tlsConfig      *tls.Config
+	tlsCAFile      string
+	tlsCertFile    string
+	tlsKeyFile     string
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -139,7 +143,7 @@ func InitConfig() (*Config, error) {
 		requestTimeout = timeout
 	}
 
-	tlsConfig, err := readTLSConfig()
+	tlsConfig, tlsCAFile, err := readTLSConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +168,9 @@ func InitConfig() (*Config, error) {
 		authToken:                  authToken,
 		requestTimeout:             requestTimeout,
 		tlsConfig:                  tlsConfig,
+		tlsCAFile:                  tlsCAFile,
+		tlsCertFile:                strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE")),
+		tlsKeyFile:                 strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE")),
 	}
 
 	// Validate required config
@@ -298,8 +305,10 @@ func readSecret(valueEnv, fileEnv string) (string, error) {
 
 // readTLSConfig builds the TLS settings for calls to vmanomaly.
 // It returns nil when no TLS variables are set, keeping the system trust store.
-func readTLSConfig() (*tls.Config, error) {
-	caFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_FILE"))
+// The returned caFile is VMANOMALY_TLS_CA_FILE. The vmanomaly client re-reads it and the
+// client certificate files after rotation; see TLSFiles.
+func readTLSConfig() (cfg *tls.Config, caFile string, err error) {
+	caFile = strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_FILE"))
 	caCert := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_CERT"))
 	certFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE"))
 	keyFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE"))
@@ -307,25 +316,25 @@ func readTLSConfig() (*tls.Config, error) {
 	if v := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_INSECURE_SKIP_VERIFY")); v != "" {
 		parsed, err := strconv.ParseBool(v)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse VMANOMALY_TLS_INSECURE_SKIP_VERIFY: %w", err)
+			return nil, "", fmt.Errorf("failed to parse VMANOMALY_TLS_INSECURE_SKIP_VERIFY: %w", err)
 		}
 		insecureSkipVerify = parsed
 	}
 	if caFile == "" && caCert == "" && certFile == "" && keyFile == "" && !insecureSkipVerify {
-		return nil, nil
+		return nil, "", nil
 	}
 	if caFile != "" && caCert != "" {
-		return nil, fmt.Errorf("VMANOMALY_TLS_CA_FILE and VMANOMALY_TLS_CA_CERT are mutually exclusive")
+		return nil, "", fmt.Errorf("VMANOMALY_TLS_CA_FILE and VMANOMALY_TLS_CA_CERT are mutually exclusive")
 	}
 	if insecureSkipVerify && (caFile != "" || caCert != "") {
 		// InsecureSkipVerify silently ignores RootCAs
-		return nil, fmt.Errorf("VMANOMALY_TLS_INSECURE_SKIP_VERIFY cannot be combined with a custom CA")
+		return nil, "", fmt.Errorf("VMANOMALY_TLS_INSECURE_SKIP_VERIFY cannot be combined with a custom CA")
 	}
 	if (certFile == "") != (keyFile == "") {
-		return nil, fmt.Errorf("VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE must be set together")
+		return nil, "", fmt.Errorf("VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE must be set together")
 	}
 
-	cfg := &tls.Config{
+	cfg = &tls.Config{
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // opt-in via VMANOMALY_TLS_INSECURE_SKIP_VERIFY
 	}
@@ -333,29 +342,25 @@ func readTLSConfig() (*tls.Config, error) {
 	if caFile != "" {
 		data, err := os.ReadFile(caFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read VMANOMALY_TLS_CA_FILE: %w", err)
+			return nil, "", fmt.Errorf("failed to read VMANOMALY_TLS_CA_FILE: %w", err)
 		}
 		caPEM, caSource = data, "VMANOMALY_TLS_CA_FILE"
 	}
 	if caFile != "" || caCert != "" {
-		// extend the system roots, as -tlsCAFile does in VictoriaMetrics components
-		pool, err := x509.SystemCertPool()
+		pool, err := tlsfiles.CertPool(caPEM, caSource)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load system certificate pool: %w", err)
-		}
-		if !pool.AppendCertsFromPEM(caPEM) {
-			return nil, fmt.Errorf("%s contains no PEM certificates", caSource)
+			return nil, "", err
 		}
 		cfg.RootCAs = pool
 	}
 	if certFile != "" {
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE: %w", err)
+			return nil, "", fmt.Errorf("failed to load VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE: %w", err)
 		}
 		cfg.Certificates = []tls.Certificate{cert}
 	}
-	return cfg, nil
+	return cfg, caFile, nil
 }
 
 func (c *Config) VmanomalyEndpoint() string {
@@ -465,6 +470,19 @@ func (c *Config) RequestTimeout() time.Duration {
 }
 
 // TLSConfig returns TLS settings for calls to vmanomaly, or nil to use the defaults.
+// It holds the material read at startup; TLSFiles names the files to reload.
 func (c *Config) TLSConfig() *tls.Config {
 	return c.tlsConfig
+}
+
+// TLSFiles returns the CA bundle and client certificate files that the vmanomaly
+// client re-reads after rotation. An inline VMANOMALY_TLS_CA_CERT is not a file.
+func (c *Config) TLSFiles() tlsfiles.Files {
+	return tlsfiles.Files{
+		CAFile:     c.tlsCAFile,
+		CertFile:   c.tlsCertFile,
+		KeyFile:    c.tlsKeyFile,
+		CASource:   "VMANOMALY_TLS_CA_FILE",
+		CertSource: "VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE",
+	}
 }
