@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -676,4 +677,130 @@ func TestHTTPTransportFlags(t *testing.T) {
 	if !cfg.Stateless() || !cfg.DisableLocalhostProtection() {
 		t.Fatalf("flags not applied: stateless=%t disableLocalhostProtection=%t", cfg.Stateless(), cfg.DisableLocalhostProtection())
 	}
+}
+
+func TestPassthroughHeaders(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("MCP_AUTH_TOKEN", "")
+	t.Setenv("MCP_AUTH_TOKEN_FILE", "")
+
+	t.Run("unset", func(t *testing.T) {
+		t.Setenv("MCP_PASSTHROUGH_HEADERS", "")
+		cfg, err := InitConfig()
+		if err != nil {
+			t.Fatalf("InitConfig failed: %v", err)
+		}
+		if len(cfg.PassthroughHeaders()) != 0 {
+			t.Fatalf("unexpected passthrough headers %v", cfg.PassthroughHeaders())
+		}
+	})
+
+	t.Run("canonical and deduplicated", func(t *testing.T) {
+		t.Setenv("MCP_PASSTHROUGH_HEADERS", " x-scope-orgid, authorization,,X-Scope-OrgID ")
+		cfg, err := InitConfig()
+		if err != nil {
+			t.Fatalf("InitConfig failed: %v", err)
+		}
+		want := []string{"X-Scope-Orgid", "Authorization"}
+		if !slices.Equal(cfg.PassthroughHeaders(), want) {
+			t.Fatalf("PassthroughHeaders() = %v, want %v", cfg.PassthroughHeaders(), want)
+		}
+	})
+
+	t.Run("invalid header name", func(t *testing.T) {
+		t.Setenv("MCP_PASSTHROUGH_HEADERS", "X-Tenant,Bad Header")
+		if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "invalid header name") {
+			t.Fatalf("expected invalid header name error, got %v", err)
+		}
+	})
+
+	for _, reserved := range []string{"content-type", "Host", "Transfer-Encoding"} {
+		t.Run("reserved "+reserved, func(t *testing.T) {
+			t.Setenv("MCP_PASSTHROUGH_HEADERS", "X-Tenant,"+reserved)
+			if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "cannot include") {
+				t.Fatalf("expected reserved header error, got %v", err)
+			}
+		})
+	}
+
+	t.Run("authorization cannot be forwarded with MCP auth", func(t *testing.T) {
+		t.Setenv("MCP_PASSTHROUGH_HEADERS", "X-Tenant,authorization")
+		t.Setenv("MCP_AUTH_TOKEN", "mcp-secret")
+		if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "Authorization") {
+			t.Fatalf("expected Authorization conflict error, got %v", err)
+		}
+	})
+}
+
+func TestAuthToken(t *testing.T) {
+	t.Setenv("VMANOMALY_ENDPOINT", "http://localhost:8490")
+	t.Setenv("MCP_PASSTHROUGH_HEADERS", "")
+
+	t.Run("unset", func(t *testing.T) {
+		t.Setenv("MCP_AUTH_TOKEN", "")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", "")
+		cfg, err := InitConfig()
+		if err != nil {
+			t.Fatalf("InitConfig failed: %v", err)
+		}
+		if cfg.AuthToken() != "" {
+			t.Fatalf("unexpected auth token %q", cfg.AuthToken())
+		}
+	})
+
+	t.Run("from environment", func(t *testing.T) {
+		t.Setenv("MCP_AUTH_TOKEN", " env-token ")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", "")
+		cfg, err := InitConfig()
+		if err != nil {
+			t.Fatalf("InitConfig failed: %v", err)
+		}
+		if cfg.AuthToken() != "env-token" {
+			t.Fatalf("AuthToken() = %q, want env-token", cfg.AuthToken())
+		}
+	})
+
+	t.Run("from file", func(t *testing.T) {
+		tokenPath := filepath.Join(t.TempDir(), "mcp-token")
+		if err := os.WriteFile(tokenPath, []byte("file-token\n"), 0600); err != nil {
+			t.Fatalf("failed to write token file: %v", err)
+		}
+		t.Setenv("MCP_AUTH_TOKEN", "")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", tokenPath)
+		cfg, err := InitConfig()
+		if err != nil {
+			t.Fatalf("InitConfig failed: %v", err)
+		}
+		if cfg.AuthToken() != "file-token" {
+			t.Fatalf("AuthToken() = %q, want file-token", cfg.AuthToken())
+		}
+	})
+
+	t.Run("blank value fails instead of disabling auth", func(t *testing.T) {
+		t.Setenv("MCP_AUTH_TOKEN", "  ")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", "")
+		if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "MCP_AUTH_TOKEN is blank") {
+			t.Fatalf("expected blank token error, got %v", err)
+		}
+	})
+
+	t.Run("sources are mutually exclusive", func(t *testing.T) {
+		t.Setenv("MCP_AUTH_TOKEN", "env-token")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", filepath.Join(t.TempDir(), "mcp-token"))
+		if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+			t.Fatalf("expected mutually exclusive error, got %v", err)
+		}
+	})
+
+	t.Run("empty file", func(t *testing.T) {
+		tokenPath := filepath.Join(t.TempDir(), "mcp-token")
+		if err := os.WriteFile(tokenPath, []byte("\n"), 0600); err != nil {
+			t.Fatalf("failed to write token file: %v", err)
+		}
+		t.Setenv("MCP_AUTH_TOKEN", "")
+		t.Setenv("MCP_AUTH_TOKEN_FILE", tokenPath)
+		if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "MCP_AUTH_TOKEN_FILE is empty") {
+			t.Fatalf("expected empty file error, got %v", err)
+		}
+	})
 }

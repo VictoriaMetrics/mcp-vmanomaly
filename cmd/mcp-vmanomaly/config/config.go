@@ -4,8 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -26,8 +28,12 @@ type Config struct {
 	logFile                    string
 	bearerToken                string
 	customHeaders              map[string]string
-	requestTimeout             time.Duration
-	tlsConfig                  *tls.Config
+	// passthroughHeaders lists canonical header names copied from each MCP request to vmanomaly
+	passthroughHeaders []string
+	// authToken is the bearer token MCP clients must present in sse and http modes
+	authToken      string
+	requestTimeout time.Duration
+	tlsConfig      *tls.Config
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -97,9 +103,25 @@ func InitConfig() (*Config, error) {
 	}
 
 	customHeadersMap := parseCustomHeaders(os.Getenv("VMANOMALY_HEADERS"))
-	bearerToken, err := readBearerToken()
+	bearerToken, err := readSecret("VMANOMALY_BEARER_TOKEN", "VMANOMALY_BEARER_TOKEN_FILE")
 	if err != nil {
 		return nil, err
+	}
+	authToken, err := readSecret("MCP_AUTH_TOKEN", "MCP_AUTH_TOKEN_FILE")
+	if err != nil {
+		return nil, err
+	}
+	if raw, set := os.LookupEnv("MCP_AUTH_TOKEN"); set && raw != "" && authToken == "" {
+		// A whitespace-only value, e.g. from an unset template variable, must not silently disable auth.
+		return nil, fmt.Errorf("MCP_AUTH_TOKEN is blank; unset it to disable authentication")
+	}
+	passthroughHeaders, err := parsePassthroughHeaders(os.Getenv("MCP_PASSTHROUGH_HEADERS"))
+	if err != nil {
+		return nil, err
+	}
+	if authToken != "" && slices.Contains(passthroughHeaders, "Authorization") {
+		// The incoming Authorization header carries MCP_AUTH_TOKEN, which must not reach vmanomaly.
+		return nil, fmt.Errorf("MCP_PASSTHROUGH_HEADERS cannot include Authorization when MCP_AUTH_TOKEN is set")
 	}
 
 	requestTimeout := 30 * time.Second
@@ -134,6 +156,8 @@ func InitConfig() (*Config, error) {
 		logFile:                    os.Getenv("MCP_LOG_FILE"),
 		bearerToken:                bearerToken,
 		customHeaders:              customHeadersMap,
+		passthroughHeaders:         passthroughHeaders,
+		authToken:                  authToken,
 		requestTimeout:             requestTimeout,
 		tlsConfig:                  tlsConfig,
 	}
@@ -187,25 +211,78 @@ func parseBoolEnv(name string) (bool, error) {
 	return parsed, nil
 }
 
-func readBearerToken() (string, error) {
-	token := strings.TrimSpace(os.Getenv("VMANOMALY_BEARER_TOKEN"))
-	tokenFile := strings.TrimSpace(os.Getenv("VMANOMALY_BEARER_TOKEN_FILE"))
-	if token != "" && tokenFile != "" {
-		return "", fmt.Errorf("VMANOMALY_BEARER_TOKEN and VMANOMALY_BEARER_TOKEN_FILE are mutually exclusive")
+// reservedPassthroughHeaders are set by the HTTP client or describe the message
+// framing of each vmanomaly request, so they cannot be forwarded from MCP clients.
+var reservedPassthroughHeaders = map[string]bool{
+	"Connection":        true,
+	"Content-Length":    true,
+	"Content-Type":      true,
+	"Host":              true,
+	"Keep-Alive":        true,
+	"Proxy-Connection":  true,
+	"Te":                true,
+	"Trailer":           true,
+	"Transfer-Encoding": true,
+	"Upgrade":           true,
+}
+
+// parsePassthroughHeaders parses a comma-separated list of HTTP header names
+// and returns them in canonical form without duplicates.
+func parsePassthroughHeaders(value string) ([]string, error) {
+	var headers []string
+	for _, name := range strings.Split(value, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !isHeaderToken(name) {
+			return nil, fmt.Errorf("MCP_PASSTHROUGH_HEADERS contains an invalid header name %q", name)
+		}
+		name = http.CanonicalHeaderKey(name)
+		if reservedPassthroughHeaders[name] {
+			return nil, fmt.Errorf("MCP_PASSTHROUGH_HEADERS cannot include %s; the server sets it for each vmanomaly request", name)
+		}
+		if !slices.Contains(headers, name) {
+			headers = append(headers, name)
+		}
 	}
-	if tokenFile == "" {
-		return token, nil
+	return headers, nil
+}
+
+// isHeaderToken reports whether name is a valid HTTP header field name (RFC 9110 token).
+func isHeaderToken(name string) bool {
+	for _, r := range name {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+			continue
+		}
+		if !strings.ContainsRune("!#$%&'*+-.^_`|~", r) {
+			return false
+		}
+	}
+	return name != ""
+}
+
+// readSecret reads a secret from the variable valueEnv or from the file named by fileEnv.
+// The two sources are mutually exclusive; an unset secret is returned as "".
+func readSecret(valueEnv, fileEnv string) (string, error) {
+	value := strings.TrimSpace(os.Getenv(valueEnv))
+	file := strings.TrimSpace(os.Getenv(fileEnv))
+	if value != "" && file != "" {
+		return "", fmt.Errorf("%s and %s are mutually exclusive", valueEnv, fileEnv)
+	}
+	if file == "" {
+		return value, nil
 	}
 
-	data, err := os.ReadFile(tokenFile)
+	data, err := os.ReadFile(file)
 	if err != nil {
-		return "", fmt.Errorf("failed to read VMANOMALY_BEARER_TOKEN_FILE: %w", err)
+		return "", fmt.Errorf("failed to read %s: %w", fileEnv, err)
 	}
-	token = strings.TrimSpace(string(data))
-	if token == "" {
-		return "", fmt.Errorf("VMANOMALY_BEARER_TOKEN_FILE is empty")
+	value = strings.TrimSpace(string(data))
+	if value == "" {
+		return "", fmt.Errorf("%s is empty", fileEnv)
 	}
-	return token, nil
+	return value, nil
 }
 
 // readTLSConfig builds the TLS settings for calls to vmanomaly.
@@ -346,6 +423,19 @@ func (c *Config) BearerToken() string {
 
 func (c *Config) CustomHeaders() map[string]string {
 	return c.customHeaders
+}
+
+// PassthroughHeaders returns the canonical names of headers forwarded from each
+// incoming MCP request to vmanomaly. They override VMANOMALY_HEADERS and the
+// VMANOMALY_BEARER_TOKEN Authorization header on collision.
+func (c *Config) PassthroughHeaders() []string {
+	return c.passthroughHeaders
+}
+
+// AuthToken returns the bearer token MCP clients must present in sse and http modes.
+// Empty means the MCP endpoints are not authenticated.
+func (c *Config) AuthToken() string {
+	return c.authToken
 }
 
 func (c *Config) RequestTimeout() time.Duration {

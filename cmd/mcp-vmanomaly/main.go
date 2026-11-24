@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/auth"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/config"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/cmd/mcp-vmanomaly/hooks"
 	"github.com/VictoriaMetrics/mcp-vmanomaly/internal/promts"
@@ -135,54 +136,16 @@ func serve(c *config.Config, stderr io.Writer) error {
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	mux := http.NewServeMux()
-
-	// Metrics endpoint
-	mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
-		ms.WritePrometheus(w)
-		metrics.WriteProcessMetrics(w)
-	})
-
-	// Health endpoints
-	mux.HandleFunc("/health/liveness", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK\n"))
-	})
-	mux.HandleFunc("/health/readiness", func(w http.ResponseWriter, _ *http.Request) {
-		if !isReady.Load() {
-			http.Error(w, "Not ready", http.StatusServiceUnavailable)
-			return
-		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("Ready\n"))
-	})
-
-	// Server mode-specific handlers
-	switch c.ServerMode() {
-	case "sse":
-		slog.Info("Starting server in SSE mode", "addr", c.ListenAddr(),
-			"localhost_protection", !c.DisableLocalhostProtection())
-		srv := server.NewSSEServer(mcpServer, sseOptions(c)...)
-		mux.Handle(srv.CompleteSsePath(), srv.SSEHandler())
-		mux.Handle(srv.CompleteMessagePath(), srv.MessageHandler())
-	case "http":
-		slog.Info("Starting server in HTTP mode", "addr", c.ListenAddr(),
-			"stateless", c.Stateless(), "localhost_protection", !c.DisableLocalhostProtection())
-		srv := server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(c)...)
-		mux.Handle("/mcp", srv)
-	default:
-		return fmt.Errorf("unknown server mode %q", c.ServerMode())
+	handler, err := newHTTPHandler(c, mcpServer, ms, &isReady)
+	if err != nil {
+		return err
 	}
 
 	ongoingCtx, stopOngoingGracefully := context.WithCancel(context.Background())
 	defer stopOngoingGracefully()
 	hs := &http.Server{
 		Addr:    c.ListenAddr(),
-		Handler: mux,
+		Handler: handler,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ongoingCtx
 		},
@@ -231,6 +194,60 @@ func serve(c *config.Config, stderr io.Writer) error {
 	return nil
 }
 
+// newHTTPHandler builds the handler for sse and http modes: the MCP transport,
+// metrics and health endpoints, wrapped in authentication when MCP_AUTH_TOKEN is set.
+func newHTTPHandler(c *config.Config, mcpServer *server.MCPServer, ms *metrics.Set, isReady *atomic.Bool) (http.Handler, error) {
+	mux := http.NewServeMux()
+
+	// Metrics endpoint
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		ms.WritePrometheus(w)
+		metrics.WriteProcessMetrics(w)
+	})
+
+	// Health endpoints
+	mux.HandleFunc("/health/liveness", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK\n"))
+	})
+	mux.HandleFunc("/health/readiness", func(w http.ResponseWriter, _ *http.Request) {
+		if !isReady.Load() {
+			http.Error(w, "Not ready", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Ready\n"))
+	})
+
+	// Server mode-specific handlers
+	switch c.ServerMode() {
+	case "sse":
+		slog.Info("Starting server in SSE mode", "addr", c.ListenAddr(),
+			"localhost_protection", !c.DisableLocalhostProtection())
+		srv := server.NewSSEServer(mcpServer, sseOptions(c)...)
+		mux.Handle(srv.CompleteSsePath(), srv.SSEHandler())
+		mux.Handle(srv.CompleteMessagePath(), srv.MessageHandler())
+	case "http":
+		slog.Info("Starting server in HTTP mode", "addr", c.ListenAddr(),
+			"stateless", c.Stateless(), "localhost_protection", !c.DisableLocalhostProtection())
+		srv := server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(c)...)
+		mux.Handle("/mcp", srv)
+	default:
+		return nil, fmt.Errorf("unknown server mode %q", c.ServerMode())
+	}
+
+	var handler http.Handler = mux
+	if authToken := c.AuthToken(); authToken != "" {
+		slog.Info("MCP client authentication enabled")
+		handler = auth.Middleware(authToken)(handler)
+	}
+	return handler, nil
+}
+
 func sseOptions(c *config.Config) []server.SSEOption {
 	var opts []server.SSEOption
 	if c.DisableLocalhostProtection() {
@@ -256,6 +273,21 @@ func streamableHTTPOptions(c *config.Config) []server.StreamableHTTPOption {
 	return opts
 }
 
+// passthroughHeaders copies the configured headers from an incoming MCP request.
+// In stdio mode the request has no HTTP headers, so nothing is copied.
+func passthroughHeaders(names []string, incoming http.Header) http.Header {
+	if len(names) == 0 || len(incoming) == 0 {
+		return nil
+	}
+	forwarded := make(http.Header, len(names))
+	for _, name := range names {
+		if values := incoming.Values(name); len(values) > 0 {
+			forwarded[name] = values
+		}
+	}
+	return forwarded
+}
+
 var errToolUnavailable = errors.New("requested tool is not available")
 
 func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool) (*server.MCPServer, error) {
@@ -273,6 +305,7 @@ func newMCPServer(c *config.Config, ms *metrics.Set, enableProtocolLogging bool)
 			if !c.IsToolEnabled(request.Params.Name) {
 				return nil, errToolUnavailable
 			}
+			ctx = vmanomaly.WithRequestHeaders(ctx, passthroughHeaders(c.PassthroughHeaders(), request.Header))
 			return next(ctx, request)
 		}
 	})
