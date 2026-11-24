@@ -40,8 +40,8 @@ type Config struct {
 	tlsCAFile      string
 	tlsCertFile    string
 	tlsKeyFile     string
-	// deprecationWarnings are logged by the caller once its logger is configured
-	deprecationWarnings []string
+	// warnings are logged by the caller once its logger is configured
+	warnings []string
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -173,7 +173,7 @@ func InitConfig() (*Config, error) {
 		tlsCAFile:                  tlsCAFile,
 		tlsCertFile:                strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE")),
 		tlsKeyFile:                 strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE")),
-		deprecationWarnings:        deprecationWarnings(),
+		warnings:                   deprecationWarnings(),
 	}
 
 	// Validate required config
@@ -324,9 +324,10 @@ func deprecationWarnings() []string {
 	return warnings
 }
 
-// DeprecationWarnings returns one message per deprecated setting in use.
-func (c *Config) DeprecationWarnings() []string {
-	return c.deprecationWarnings
+// Warnings returns messages about settings that are accepted but should be changed,
+// such as deprecated names. Add other kinds of warnings here too.
+func (c *Config) Warnings() []string {
+	return c.warnings
 }
 
 // readTLSCAFile returns the CA bundle path from tlsCAFileEnv or its legacy alias.
