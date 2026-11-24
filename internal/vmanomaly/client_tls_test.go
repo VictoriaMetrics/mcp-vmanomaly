@@ -90,7 +90,7 @@ func TestClientUsesRotatedTLSFiles(t *testing.T) {
 	dir := t.TempDir()
 	files := tlsfiles.Files{
 		CAFile: filepath.Join(dir, "ca.pem"), CertFile: filepath.Join(dir, "client.pem"), KeyFile: filepath.Join(dir, "client.key"),
-		CASource: "VMANOMALY_TLS_CA_FILE", CertSource: "VMANOMALY_TLS_CERT_FILE",
+		CASource: "VMANOMALY_TLS_CA_CERT_FILE", CertSource: "VMANOMALY_TLS_CERT_FILE",
 	}
 	copyTestFile(t, oldPKI.CAFile, files.CAFile)
 	copyTestFile(t, oldPKI.ClientCert, files.CertFile)

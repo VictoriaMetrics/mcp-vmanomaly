@@ -496,7 +496,8 @@ func TestBearerTokenSourcesAreMutuallyExclusive(t *testing.T) {
 func setTLSEnv(t *testing.T, caFile, certFile, keyFile string) {
 	t.Helper()
 	t.Setenv("VMANOMALY_ENDPOINT", "https://127.0.0.1:8490")
-	t.Setenv("VMANOMALY_TLS_CA_FILE", caFile)
+	t.Setenv("VMANOMALY_TLS_CA_CERT_FILE", caFile)
+	t.Setenv("VMANOMALY_TLS_CA_FILE", "")
 	t.Setenv("VMANOMALY_TLS_CERT_FILE", certFile)
 	t.Setenv("VMANOMALY_TLS_KEY_FILE", keyFile)
 	t.Setenv("VMANOMALY_TLS_CA_CERT", "")
@@ -834,5 +835,26 @@ func TestLogFormatAndInstructionsOverride(t *testing.T) {
 	t.Setenv("MCP_LOG_FORMAT", "logfmt")
 	if _, err := InitConfig(); err == nil || !strings.Contains(err.Error(), "MCP_LOG_FORMAT") {
 		t.Fatalf("expected MCP_LOG_FORMAT error, got %v", err)
+	}
+}
+
+func TestTLSCAFileAcceptsDeprecatedAlias(t *testing.T) {
+	setTLSEnv(t, "", "", "")
+	caFile := filepath.Join(t.TempDir(), "ca.crt")
+
+	t.Setenv("VMANOMALY_TLS_CA_FILE", caFile)
+	got, err := readTLSCAFile()
+	if err != nil || got != caFile {
+		t.Fatalf("legacy name only: got %q, %v; want %q", got, err, caFile)
+	}
+
+	t.Setenv("VMANOMALY_TLS_CA_CERT_FILE", caFile)
+	if got, err = readTLSCAFile(); err != nil || got != caFile {
+		t.Fatalf("both names, same path: got %q, %v; want %q", got, err, caFile)
+	}
+
+	t.Setenv("VMANOMALY_TLS_CA_CERT_FILE", filepath.Join(t.TempDir(), "other.crt"))
+	if _, err = readTLSCAFile(); err == nil {
+		t.Fatal("expected an error when the two names point to different files")
 	}
 }

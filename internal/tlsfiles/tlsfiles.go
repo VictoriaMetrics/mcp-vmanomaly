@@ -39,7 +39,7 @@ type Files struct {
 	CAFile   string
 	CertFile string
 	KeyFile  string
-	// Setting names used in errors and logs, e.g. "VMANOMALY_TLS_CA_FILE".
+	// Setting names used in errors and logs, e.g. "VMANOMALY_TLS_CA_CERT_FILE".
 	CASource   string
 	CertSource string
 }
