@@ -34,7 +34,7 @@ func newStreamableHTTPHandler(t *testing.T, stateless, disableLocalhostProtectio
 	if err != nil {
 		t.Fatalf("newMCPServer failed: %v", err)
 	}
-	return streamableHTTPHandler(cfg, server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(cfg)...))
+	return server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(cfg)...)
 }
 
 func TestStreamableHTTPLocalhostProtection(t *testing.T) {
@@ -122,11 +122,8 @@ func TestStreamableHTTPStatelessRejectsGETStreams(t *testing.T) {
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("stateless GET status = %d, want 405", rec.Code)
 	}
-	if allow := rec.Header().Get("Allow"); allow != "POST, DELETE, HEAD" {
-		t.Fatalf("Allow = %q, want %q", allow, "POST, DELETE, HEAD")
-	}
 
-	// The other methods listed in Allow must be accepted (POST is checked below).
+	// DELETE and HEAD stay available (POST is checked below).
 	for _, method := range []string{http.MethodDelete, http.MethodHead} {
 		rec = httptest.NewRecorder()
 		handler.ServeHTTP(rec, loopbackRequest(method, "/mcp", "", "localhost:8080"))

@@ -173,7 +173,7 @@ func serve(c *config.Config, stderr io.Writer) error {
 		slog.Info("Starting server in HTTP mode", "addr", c.ListenAddr(),
 			"stateless", c.Stateless(), "localhost_protection", !c.DisableLocalhostProtection())
 		srv := server.NewStreamableHTTPServer(mcpServer, streamableHTTPOptions(c)...)
-		mux.Handle("/mcp", streamableHTTPHandler(c, srv))
+		mux.Handle("/mcp", srv)
 	default:
 		return fmt.Errorf("unknown server mode %q", c.ServerMode())
 	}
@@ -239,31 +239,16 @@ func sseOptions(c *config.Config) []server.SSEOption {
 	return opts
 }
 
-// streamableHTTPHandler serves the Streamable HTTP transport. In stateless mode it
-// answers GET with 405, as the MCP spec allows for servers without a standalone SSE
-// stream: without session IDs, every GET stream would share one empty session key,
-// so one client disconnecting would unregister the stream of another.
-func streamableHTTPHandler(c *config.Config, srv http.Handler) http.Handler {
-	if !c.Stateless() {
-		return srv
-	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			// mcp-go answers HEAD with 200, so it stays in the list.
-			w.Header().Set("Allow", "POST, DELETE, HEAD")
-			http.Error(w, "GET streams are not available in stateless mode", http.StatusMethodNotAllowed)
-			return
-		}
-		srv.ServeHTTP(w, r)
-	})
-}
-
 func streamableHTTPOptions(c *config.Config) []server.StreamableHTTPOption {
 	opts := []server.StreamableHTTPOption{
 		server.WithHeartbeatInterval(c.HeartbeatInterval()),
 	}
 	if c.Stateless() {
-		opts = append(opts, server.WithStateLess(true))
+		// Without session IDs every standalone GET stream shares one empty session
+		// key, so one client disconnecting would unregister another client's stream
+		// (mark3labs/mcp-go#1327). mcp-go then answers GET with 405, after its own
+		// Host, CORS and protocol-version checks.
+		opts = append(opts, server.WithStateLess(true), server.WithDisableStreaming(true))
 	}
 	if c.DisableLocalhostProtection() {
 		opts = append(opts, server.WithDisableLocalhostProtection(true))
