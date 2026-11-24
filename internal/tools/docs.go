@@ -33,18 +33,13 @@ func RegisterDocsTool(s *server.MCPServer) {
 	searchDocsTool := mcp.NewTool(
 		"vmanomaly_search_docs",
 		mcp.WithDescription("Search vmanomaly documentation using full-text search with fuzzy matching. Returns ranked excerpts with source URIs and character offsets. Use vmanomaly_read_doc_section for additional text; excerpts are not complete documentation. Use this when you need information about model parameters, configuration syntax, troubleshooting, or feature explanations."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:           "Search vmanomaly Docs",
-			ReadOnlyHint:    ptr(true),
-			DestructiveHint: ptr(false),
-			OpenWorldHint:   ptr(false),
-		}),
+		readOnlyAnnotation("Search vmanomaly Docs", false),
 		inputSchema[SearchDocsArgs](),
 	)
 	s.AddTool(searchDocsTool, typedToolHandler(handleSearchDocs()))
 	s.AddTool(mcp.NewTool("vmanomaly_read_doc_section",
 		mcp.WithDescription("Read a bounded documentation section by source URI and character offset returned by search. Follow next_offset for continuation; fetch relevant sections before relying on truncated guidance."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{ReadOnlyHint: ptr(true), DestructiveHint: ptr(false), OpenWorldHint: ptr(false)}),
+		readOnlyAnnotation("Read vmanomaly Docs Section", false),
 		inputSchema[ReadDocArgs]()), typedToolHandler(handleReadDocSection))
 }
 

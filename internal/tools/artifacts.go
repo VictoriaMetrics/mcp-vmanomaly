@@ -28,7 +28,7 @@ type ArtifactAlertArgs struct {
 func RegisterArtifactTools(s *server.MCPServer, client *vmanomaly.Client) {
 	tool := mcp.NewTool("vmanomaly_generate_preset_artifacts",
 		mcp.WithDescription("Render matching vmanomaly configuration and vmalert rules from a complete configuration. Preserves query policies and model/scheduler mappings. Supply a public incident base URL for investigation annotations. Schema-valid does not mean live-tested; retain all warnings. Requires the artifact API; do not retry unsupported targets or infer writer destinations."),
-		mcp.WithToolAnnotation(mcp.ToolAnnotation{ReadOnlyHint: ptr(true), DestructiveHint: ptr(false), OpenWorldHint: ptr(false)}),
+		readOnlyAnnotation("Generate Preset Config and Alert Artifacts", true),
 		inputSchema[ArtifactArgs]())
 	s.AddTool(tool, typedToolHandler(handleGenerateArtifacts(client)))
 }
