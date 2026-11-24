@@ -40,6 +40,8 @@ type Config struct {
 	tlsCAFile      string
 	tlsCertFile    string
 	tlsKeyFile     string
+	// warnings are logged by the caller once its logger is configured
+	warnings []string
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -171,6 +173,7 @@ func InitConfig() (*Config, error) {
 		tlsCAFile:                  tlsCAFile,
 		tlsCertFile:                strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE")),
 		tlsKeyFile:                 strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE")),
+		warnings:                   deprecationWarnings(),
 	}
 
 	// Validate required config
@@ -303,12 +306,52 @@ func readSecret(valueEnv, fileEnv string) (string, error) {
 	return value, nil
 }
 
+// tlsCAFileEnv names the CA bundle path. Its name pairs with VMANOMALY_TLS_CA_CERT the way
+// VMANOMALY_BEARER_TOKEN_FILE pairs with VMANOMALY_BEARER_TOKEN, and matches the
+// *_CA_CERT_FILE settings of the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers.
+const tlsCAFileEnv = "VMANOMALY_TLS_CA_CERT_FILE"
+
+// legacyTLSCAFileEnv is the earlier name of tlsCAFileEnv, still accepted as an alias.
+const legacyTLSCAFileEnv = "VMANOMALY_TLS_CA_FILE"
+
+// deprecationWarnings lists the deprecated settings in use. InitConfig runs before the
+// configured logger exists, so it returns them instead of logging.
+func deprecationWarnings() []string {
+	var warnings []string
+	if strings.TrimSpace(os.Getenv(legacyTLSCAFileEnv)) != "" {
+		warnings = append(warnings, fmt.Sprintf("%s is deprecated; use %s", legacyTLSCAFileEnv, tlsCAFileEnv))
+	}
+	return warnings
+}
+
+// Warnings returns messages about settings that are accepted but should be changed,
+// such as deprecated names. Add other kinds of warnings here too.
+func (c *Config) Warnings() []string {
+	return c.warnings
+}
+
+// readTLSCAFile returns the CA bundle path from tlsCAFileEnv or its legacy alias.
+func readTLSCAFile() (string, error) {
+	caFile := strings.TrimSpace(os.Getenv(tlsCAFileEnv))
+	legacy := strings.TrimSpace(os.Getenv(legacyTLSCAFileEnv))
+	if legacy == "" {
+		return caFile, nil
+	}
+	if caFile != "" && caFile != legacy {
+		return "", fmt.Errorf("%s and its deprecated alias %s point to different files; unset %s", tlsCAFileEnv, legacyTLSCAFileEnv, legacyTLSCAFileEnv)
+	}
+	return legacy, nil
+}
+
 // readTLSConfig builds the TLS settings for calls to vmanomaly.
 // It returns nil when no TLS variables are set, keeping the system trust store.
-// The returned caFile is VMANOMALY_TLS_CA_FILE. The vmanomaly client re-reads it and the
+// The returned caFile is VMANOMALY_TLS_CA_CERT_FILE. The vmanomaly client re-reads it and the
 // client certificate files after rotation; see TLSFiles.
 func readTLSConfig() (cfg *tls.Config, caFile string, err error) {
-	caFile = strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_FILE"))
+	caFile, err = readTLSCAFile()
+	if err != nil {
+		return nil, "", err
+	}
 	caCert := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CA_CERT"))
 	certFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE"))
 	keyFile := strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE"))
@@ -324,7 +367,7 @@ func readTLSConfig() (cfg *tls.Config, caFile string, err error) {
 		return nil, "", nil
 	}
 	if caFile != "" && caCert != "" {
-		return nil, "", fmt.Errorf("VMANOMALY_TLS_CA_FILE and VMANOMALY_TLS_CA_CERT are mutually exclusive")
+		return nil, "", fmt.Errorf("%s and VMANOMALY_TLS_CA_CERT are mutually exclusive", tlsCAFileEnv)
 	}
 	if insecureSkipVerify && (caFile != "" || caCert != "") {
 		// InsecureSkipVerify silently ignores RootCAs
@@ -342,9 +385,9 @@ func readTLSConfig() (cfg *tls.Config, caFile string, err error) {
 	if caFile != "" {
 		data, err := os.ReadFile(caFile)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to read VMANOMALY_TLS_CA_FILE: %w", err)
+			return nil, "", fmt.Errorf("failed to read %s: %w", tlsCAFileEnv, err)
 		}
-		caPEM, caSource = data, "VMANOMALY_TLS_CA_FILE"
+		caPEM, caSource = data, tlsCAFileEnv
 	}
 	if caFile != "" || caCert != "" {
 		pool, err := tlsfiles.CertPool(caPEM, caSource)
@@ -482,7 +525,7 @@ func (c *Config) TLSFiles() tlsfiles.Files {
 		CAFile:     c.tlsCAFile,
 		CertFile:   c.tlsCertFile,
 		KeyFile:    c.tlsKeyFile,
-		CASource:   "VMANOMALY_TLS_CA_FILE",
+		CASource:   tlsCAFileEnv,
 		CertSource: "VMANOMALY_TLS_CERT_FILE and VMANOMALY_TLS_KEY_FILE",
 	}
 }

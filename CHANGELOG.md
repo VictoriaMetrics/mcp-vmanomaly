@@ -19,7 +19,8 @@ published as the corresponding GitHub release notes.
 - Updated `github.com/mark3labs/mcp-go` from v0.43.0 to v1.6.0, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers. Tool input and output schemas keep their properties, constraints and descriptions; tools without arguments now advertise explicit empty `properties` and `required` fields.
 - Updated the build toolchain to Go 1.27.4, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers.
 - Added annotation titles to all tools and marked `vmanomaly_validate_config` as read-only and non-destructive; it previously inherited the default destructive hint. Every tool that calls vmanomaly or a datasource now sets `openWorldHint: true`, as in the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers; only `vmanomaly_get_preset_guide`, `vmanomaly_search_docs` and `vmanomaly_read_doc_section`, which serve embedded content, stay closed-world. A test now requires every tool to set a title and explicit hints.
-- Re-read `VMANOMALY_TLS_CA_FILE`, `VMANOMALY_TLS_CERT_FILE` and `VMANOMALY_TLS_KEY_FILE` at most once per second, so rotated CA and client certificates are used without a restart. An invalid or half-written rotation keeps the previous version and logs a warning.
+- Re-read `VMANOMALY_TLS_CA_CERT_FILE`, `VMANOMALY_TLS_CERT_FILE` and `VMANOMALY_TLS_KEY_FILE` at most once per second, so rotated CA and client certificates are used without a restart. An invalid or half-written rotation keeps the previous version and logs a warning.
+- Renamed `VMANOMALY_TLS_CA_FILE` to `VMANOMALY_TLS_CA_CERT_FILE`, so it pairs with `VMANOMALY_TLS_CA_CERT` like the `*_CA_CERT` / `*_CA_CERT_FILE` settings of the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers. The old name still works and logs a deprecation warning; setting both names to different paths fails startup.
 
 ### Breaking changes
 
