@@ -104,6 +104,9 @@ func serve(c *config.Config, stderr io.Writer) error {
 	if tlsConfig := c.TLSConfig(); tlsConfig != nil && tlsConfig.InsecureSkipVerify {
 		slog.Warn("TLS certificate verification for vmanomaly is disabled via VMANOMALY_TLS_INSECURE_SKIP_VERIFY")
 	}
+	for _, warning := range c.DeprecationWarnings() {
+		slog.Warn(warning)
+	}
 
 	ms := metrics.NewSet()
 	mcpServer, err := newMCPServer(c, ms, logging.ParseLevel(c.LogLevel()) <= slog.LevelDebug)

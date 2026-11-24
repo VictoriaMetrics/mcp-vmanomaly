@@ -857,4 +857,12 @@ func TestTLSCAFileAcceptsDeprecatedAlias(t *testing.T) {
 	if _, err = readTLSCAFile(); err == nil {
 		t.Fatal("expected an error when the two names point to different files")
 	}
+
+	if got := deprecationWarnings(); len(got) != 1 || !strings.Contains(got[0], "VMANOMALY_TLS_CA_FILE") {
+		t.Fatalf("deprecationWarnings() = %q, want one VMANOMALY_TLS_CA_FILE warning", got)
+	}
+	t.Setenv("VMANOMALY_TLS_CA_FILE", "")
+	if got := deprecationWarnings(); len(got) != 0 {
+		t.Fatalf("deprecationWarnings() = %q, want none", got)
+	}
 }

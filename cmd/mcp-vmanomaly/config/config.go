@@ -3,7 +3,6 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,6 +40,8 @@ type Config struct {
 	tlsCAFile      string
 	tlsCertFile    string
 	tlsKeyFile     string
+	// deprecationWarnings are logged by the caller once its logger is configured
+	deprecationWarnings []string
 }
 
 func parseToolSet(value string) map[string]bool {
@@ -172,6 +173,7 @@ func InitConfig() (*Config, error) {
 		tlsCAFile:                  tlsCAFile,
 		tlsCertFile:                strings.TrimSpace(os.Getenv("VMANOMALY_TLS_CERT_FILE")),
 		tlsKeyFile:                 strings.TrimSpace(os.Getenv("VMANOMALY_TLS_KEY_FILE")),
+		deprecationWarnings:        deprecationWarnings(),
 	}
 
 	// Validate required config
@@ -312,6 +314,21 @@ const tlsCAFileEnv = "VMANOMALY_TLS_CA_CERT_FILE"
 // legacyTLSCAFileEnv is the earlier name of tlsCAFileEnv, still accepted as an alias.
 const legacyTLSCAFileEnv = "VMANOMALY_TLS_CA_FILE"
 
+// deprecationWarnings lists the deprecated settings in use. InitConfig runs before the
+// configured logger exists, so it returns them instead of logging.
+func deprecationWarnings() []string {
+	var warnings []string
+	if strings.TrimSpace(os.Getenv(legacyTLSCAFileEnv)) != "" {
+		warnings = append(warnings, fmt.Sprintf("%s is deprecated; use %s", legacyTLSCAFileEnv, tlsCAFileEnv))
+	}
+	return warnings
+}
+
+// DeprecationWarnings returns one message per deprecated setting in use.
+func (c *Config) DeprecationWarnings() []string {
+	return c.deprecationWarnings
+}
+
 // readTLSCAFile returns the CA bundle path from tlsCAFileEnv or its legacy alias.
 func readTLSCAFile() (string, error) {
 	caFile := strings.TrimSpace(os.Getenv(tlsCAFileEnv))
@@ -322,7 +339,6 @@ func readTLSCAFile() (string, error) {
 	if caFile != "" && caFile != legacy {
 		return "", fmt.Errorf("%s and its deprecated alias %s point to different files; unset %s", tlsCAFileEnv, legacyTLSCAFileEnv, legacyTLSCAFileEnv)
 	}
-	slog.Warn("Deprecated setting; use the new name", "deprecated", legacyTLSCAFileEnv, "use", tlsCAFileEnv)
 	return legacy, nil
 }
 
