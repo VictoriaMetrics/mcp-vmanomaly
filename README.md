@@ -351,10 +351,21 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 Run the command:
 
 ```sh
-claude mcp add vmanomaly -- /path/to/mcp-vmanomaly \
+claude mcp add vmanomaly \
   -e VMANOMALY_ENDPOINT=http://localhost:8490 \
-  -e VMANOMALY_BEARER_TOKEN=<YOUR_TOKEN> \
-  -e VMANOMALY_HEADERS="X-Custom=value1,X-Auth=value2"
+  -e VMANOMALY_BEARER_TOKEN_FILE=/path/to/vmanomaly-token \
+  -e VMANOMALY_HEADERS="X-Custom=value1,X-Auth=value2" \
+  -- /path/to/mcp-vmanomaly
+```
+
+To connect to a server running in [Streamable HTTP](#modes) mode, pass the `MCP_AUTH_TOKEN` and any
+headers listed in `MCP_PASSTHROUGH_HEADERS`. With `--scope project` the entry goes to `.mcp.json`, where Claude Code
+expands `${VMANOMALY_MCP_TOKEN}` from the environment, so the single-quoted token reference is safe to commit:
+
+```sh
+claude mcp add --scope project --transport http vmanomaly http://localhost:8080/mcp \
+  --header 'Authorization: Bearer ${VMANOMALY_MCP_TOKEN}' \
+  --header 'X-Vmanomaly-Instance: team-a'
 ```
 
 See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
@@ -446,6 +457,142 @@ Add the following to your Windsurf MCP config file:
 ```
 
 See [Windsurf MCP docs](https://docs.windsurf.com/windsurf/mcp) for more info.
+
+### Codex
+
+Codex CLI and the IDE extension use the same MCP configuration file: `~/.codex/config.toml`
+(or `.codex/config.toml` in a trusted project).
+
+Run the command:
+
+```sh
+codex mcp add vmanomaly \
+  --env VMANOMALY_ENDPOINT=http://localhost:8490 \
+  --env VMANOMALY_BEARER_TOKEN_FILE=/path/to/vmanomaly-token \
+  --env VMANOMALY_HEADERS="X-Custom=value1,X-Auth=value2" \
+  -- /path/to/mcp-vmanomaly
+```
+
+The command line takes the path of a token file, not the token itself, so the token stays out of shell history.
+
+Or add the following to your Codex `~/.codex/config.toml` file:
+
+```toml
+[mcp_servers.vmanomaly]
+command = "/path/to/mcp-vmanomaly"
+
+[mcp_servers.vmanomaly.env]
+VMANOMALY_ENDPOINT = "http://localhost:8490"
+VMANOMALY_BEARER_TOKEN = "<YOUR_TOKEN>"
+VMANOMALY_HEADERS = "X-Custom=value1,X-Auth=value2"
+```
+
+If you run the server in [Streamable HTTP](#modes) mode, you can register it with:
+
+```sh
+codex mcp add vmanomaly --url http://localhost:8080/mcp
+```
+
+When the server requires `MCP_AUTH_TOKEN` or forwards headers listed in `MCP_PASSTHROUGH_HEADERS`, configure them
+in `~/.codex/config.toml`. `bearer_token_env_var` names the environment variable that holds the token:
+
+```toml
+[mcp_servers.vmanomaly]
+url = "http://localhost:8080/mcp"
+bearer_token_env_var = "VMANOMALY_MCP_TOKEN"
+http_headers = { "X-Vmanomaly-Instance" = "team-a" }
+```
+
+See [Codex MCP docs](https://developers.openai.com/codex/mcp) for more info.
+
+### Gemini CLI
+
+Add the following to your Gemini CLI `~/.gemini/settings.json` file:
+
+```json
+{
+  "mcpServers": {
+    "vmanomaly": {
+      "command": "/path/to/mcp-vmanomaly",
+      "env": {
+        "VMANOMALY_ENDPOINT": "http://localhost:8490",
+        "VMANOMALY_BEARER_TOKEN": "<YOUR_TOKEN>",
+        "VMANOMALY_HEADERS": "X-Custom=value1,X-Auth=value2"
+      }
+    }
+  }
+}
+```
+
+To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`:
+
+```sh
+gemini mcp add --transport http vmanomaly http://localhost:8080/mcp
+```
+
+When the server requires `MCP_AUTH_TOKEN` or forwards headers listed in `MCP_PASSTHROUGH_HEADERS`, pass them with
+`--header` in the same command. The single quotes store `${VMANOMALY_MCP_TOKEN}` literally, and Gemini CLI expands
+it from the environment when it loads the settings, so the token is not saved in a file or in shell history:
+
+```sh
+gemini mcp add --scope user --transport http \
+  --header 'Authorization: Bearer ${VMANOMALY_MCP_TOKEN}' \
+  --header 'X-Vmanomaly-Instance: team-a' \
+  vmanomaly http://localhost:8080/mcp
+```
+
+`gemini mcp add` writes to the project's `.gemini/settings.json` unless `--scope user` is given, and project
+settings override user settings. Keep a single `vmanomaly` entry, or the one without headers wins and every
+call fails with `401`.
+
+See [Gemini CLI MCP docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) for more info.
+
+### OpenCode
+
+Add the following to your OpenCode config file in `~/.config/opencode/opencode.json`. OpenCode V2 nests servers under
+`mcp.servers`; OpenCode V1 places them directly under `mcp`:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "vmanomaly": {
+        "type": "local",
+        "command": ["/path/to/mcp-vmanomaly"],
+        "environment": {
+          "VMANOMALY_ENDPOINT": "http://localhost:8490",
+          "VMANOMALY_BEARER_TOKEN": "<YOUR_TOKEN>",
+          "VMANOMALY_HEADERS": "X-Custom=value1,X-Auth=value2"
+        }
+      }
+    }
+  }
+}
+```
+
+To connect to a server running in [Streamable HTTP](#modes) mode at `http://localhost:8080`, pass the
+`MCP_AUTH_TOKEN` and any headers listed in `MCP_PASSTHROUGH_HEADERS`. OpenCode tries OAuth for remote servers by
+default, so set `"oauth": false` when the server uses a static token:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "vmanomaly": {
+        "type": "remote",
+        "url": "http://localhost:8080/mcp",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:VMANOMALY_MCP_TOKEN}",
+          "X-Vmanomaly-Instance": "team-a"
+        }
+      }
+    }
+  }
+}
+```
+
+See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for more info.
 
 ### Using Docker instead of binary
 
@@ -670,6 +817,33 @@ VMANOMALY_ENDPOINT="http://localhost:8490" MCP_SERVER_MODE=http ./bin/mcp-vmanom
 # Query metrics
 curl http://localhost:8080/metrics
 ```
+
+## FAQ
+
+### How to use one MCP server instance for several vmanomaly installations?
+
+Set `MCP_PASSTHROUGH_HEADERS` and point `VMANOMALY_ENDPOINT` at
+[vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) with
+[header-based routing](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header), so each MCP
+client selects its installation with a header value from its own config. This is routing, not isolation: a
+client can send any value, see [Security](#security).
+
+### Which headers win when the same header is set in several places?
+
+Headers listed in `MCP_PASSTHROUGH_HEADERS` override the same headers from `VMANOMALY_HEADERS`.
+A forwarded `Authorization` header also replaces the one built from `VMANOMALY_BEARER_TOKEN`.
+Headers the server sets itself, such as `Content-Type`, `Host` and `Content-Length`, cannot be listed.
+
+`Authorization` cannot be forwarded when `MCP_AUTH_TOKEN` is set, because the incoming `Authorization`
+header then carries the MCP server's own token. Forward upstream credentials in a different header and let
+vmauth or another gateway translate it.
+
+### Why does memory usage grow after the first documentation search?
+
+The vmanomaly documentation is embedded in the binary. The first `vmanomaly_search_docs` call builds an
+in-memory full-text index over it, which stays for the lifetime of the process. If documentation search is not
+needed, add `vmanomaly_search_docs` to `MCP_DISABLED_TOOLS` so the index is never built.
+`MCP_DISABLE_RESOURCES=true` additionally stops registering every documentation section as an MCP resource.
 
 ## Roadmap
 
