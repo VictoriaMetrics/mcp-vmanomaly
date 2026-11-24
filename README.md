@@ -353,18 +353,19 @@ Run the command:
 ```sh
 claude mcp add vmanomaly \
   -e VMANOMALY_ENDPOINT=http://localhost:8490 \
-  -e VMANOMALY_BEARER_TOKEN=<YOUR_TOKEN> \
+  -e VMANOMALY_BEARER_TOKEN_FILE=/path/to/vmanomaly-token \
   -e VMANOMALY_HEADERS="X-Custom=value1,X-Auth=value2" \
   -- /path/to/mcp-vmanomaly
 ```
 
 To connect to a server running in [Streamable HTTP](#modes) mode, pass the `MCP_AUTH_TOKEN` and any
-headers listed in `MCP_PASSTHROUGH_HEADERS`:
+headers listed in `MCP_PASSTHROUGH_HEADERS`. With `--scope project` the entry goes to `.mcp.json`, where Claude Code
+expands `${VMANOMALY_MCP_TOKEN}` from the environment, so the single-quoted token reference is safe to commit:
 
 ```sh
-claude mcp add --transport http vmanomaly http://localhost:8080/mcp \
-  --header "Authorization: Bearer <MCP_AUTH_TOKEN>" \
-  --header "X-Vmanomaly-Instance: team-a"
+claude mcp add --scope project --transport http vmanomaly http://localhost:8080/mcp \
+  --header 'Authorization: Bearer ${VMANOMALY_MCP_TOKEN}' \
+  --header 'X-Vmanomaly-Instance: team-a'
 ```
 
 See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
@@ -467,10 +468,12 @@ Run the command:
 ```sh
 codex mcp add vmanomaly \
   --env VMANOMALY_ENDPOINT=http://localhost:8490 \
-  --env VMANOMALY_BEARER_TOKEN=<YOUR_TOKEN> \
+  --env VMANOMALY_BEARER_TOKEN_FILE=/path/to/vmanomaly-token \
   --env VMANOMALY_HEADERS="X-Custom=value1,X-Auth=value2" \
   -- /path/to/mcp-vmanomaly
 ```
+
+The command line takes the path of a token file, not the token itself, so the token stays out of shell history.
 
 Or add the following to your Codex `~/.codex/config.toml` file:
 
@@ -527,30 +530,27 @@ To connect to a server running in [Streamable HTTP](#modes) mode at `http://loca
 gemini mcp add --transport http vmanomaly http://localhost:8080/mcp
 ```
 
-When the server requires `MCP_AUTH_TOKEN` or forwards headers listed in `MCP_PASSTHROUGH_HEADERS`, add them in
-your user-level `~/.gemini/settings.json` rather than on the command line or in a project's `.gemini/settings.json`,
-so the token does not end up in shell history or a repository. Gemini CLI uses `httpUrl` for Streamable HTTP
-(`url` selects SSE):
+When the server requires `MCP_AUTH_TOKEN` or forwards headers listed in `MCP_PASSTHROUGH_HEADERS`, pass them with
+`--header` in the same command. The single quotes store `${VMANOMALY_MCP_TOKEN}` literally, and Gemini CLI expands
+it from the environment when it loads the settings, so the token is not saved in a file or in shell history:
 
-```json
-{
-  "mcpServers": {
-    "vmanomaly": {
-      "httpUrl": "http://localhost:8080/mcp",
-      "headers": {
-        "Authorization": "Bearer <MCP_AUTH_TOKEN>",
-        "X-Vmanomaly-Instance": "team-a"
-      }
-    }
-  }
-}
+```sh
+gemini mcp add --scope user --transport http \
+  --header 'Authorization: Bearer ${VMANOMALY_MCP_TOKEN}' \
+  --header 'X-Vmanomaly-Instance: team-a' \
+  vmanomaly http://localhost:8080/mcp
 ```
+
+`gemini mcp add` writes to the project's `.gemini/settings.json` unless `--scope user` is given, and project
+settings override user settings. Keep a single `vmanomaly` entry, or the one without headers wins and every
+call fails with `401`.
 
 See [Gemini CLI MCP docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) for more info.
 
 ### OpenCode
 
-Add the following to your OpenCode config file in `~/.config/opencode/opencode.json`:
+Add the following to your OpenCode config file in `~/.config/opencode/opencode.json`. OpenCode V2 nests servers under
+`mcp.servers`; OpenCode V1 places them directly under `mcp`:
 
 ```json
 {
@@ -822,32 +822,11 @@ curl http://localhost:8080/metrics
 
 ### How to use one MCP server instance for several vmanomaly installations?
 
-Set `MCP_PASSTHROUGH_HEADERS` on the MCP server, point `VMANOMALY_ENDPOINT` at
-[vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/), and use
-[header-based routing](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) to pick the
-installation. Each MCP client then sends its own header value from its config, and vmauth routes every tool
-call to the matching vmanomaly.
-
-```bash
-# MCP server
-export MCP_SERVER_MODE="http"
-export VMANOMALY_ENDPOINT="http://vmauth:8427"
-export MCP_PASSTHROUGH_HEADERS="X-Vmanomaly-Instance"
-```
-
-```yaml
-# vmauth config
-unauthorized_user:
-  url_map:
-    - src_headers: ["X-Vmanomaly-Instance: team-a"]
-      url_prefix: "http://vmanomaly-team-a:8490/"
-    - src_headers: ["X-Vmanomaly-Instance: team-b"]
-      url_prefix: "http://vmanomaly-team-b:8490/"
-```
-
-Treat this as routing, not isolation: a client can send any header value. To keep mutually untrusted
-teams apart, have vmauth authenticate a per-user credential that you forward with `MCP_PASSTHROUGH_HEADERS`,
-and see [Security](#security).
+Set `MCP_PASSTHROUGH_HEADERS` and point `VMANOMALY_ENDPOINT` at
+[vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) with
+[header-based routing](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header), so each MCP
+client selects its installation with a header value from its own config. This is routing, not isolation: a
+client can send any value, see [Security](#security).
 
 ### Which headers win when the same header is set in several places?
 
