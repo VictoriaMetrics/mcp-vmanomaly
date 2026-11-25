@@ -5,6 +5,8 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+## [v0.7.0] - Unreleased
+
 ### Features
 
 - Added `MCP_AUTH_TOKEN` and `MCP_AUTH_TOKEN_FILE` to require `Authorization: Bearer <token>` from MCP clients in `http` and `sse` modes. Health and metrics endpoints stay public.
@@ -233,6 +235,8 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[Unreleased]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.0...v0.5.1

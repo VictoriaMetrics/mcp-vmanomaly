@@ -16,7 +16,7 @@ services:
       - vmanomaly-test
 
   vmanomaly:
-    image: victoriametrics/vmanomaly:v1.33.0-dhi
+    image: victoriametrics/vmanomaly:v1.33.1-dhi
     ports:
       - "8490:8490"
     command: ["-eula", "/etc/vmanomaly/config.yml"]
