@@ -5,6 +5,8 @@ published as the corresponding GitHub release notes.
 
 ## [Unreleased]
 
+## [v0.7.0] - 2026-11-26
+
 ### Features
 
 - Added `MCP_AUTH_TOKEN` and `MCP_AUTH_TOKEN_FILE` to require `Authorization: Bearer <token>` from MCP clients in `http` and `sse` modes. Health and metrics endpoints stay public.
@@ -15,6 +17,8 @@ published as the corresponding GitHub release notes.
 - Added `MCP_DISABLE_LOCALHOST_PROTECTION` to turn off the DNS-rebinding guard in `http` and `sse` modes when a same-host proxy forwards over loopback with the original `Host` header.
 
 ### Improvements
+
+- Refresh embedded documentation for vmanomaly v1.33.1 and VMUI v1.12.1 from merged vmdocs, including certificate reload, reader recovery, timestamp alignment, deployment sizing and UI guidance.
 
 - Updated `github.com/mark3labs/mcp-go` from v0.43.0 to v1.6.0, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers. Tool input and output schemas keep their properties, constraints and descriptions; tools without arguments now advertise explicit empty `properties` and `required` fields.
 - Updated the build toolchain to Go 1.27.4, aligning with the VictoriaMetrics, VictoriaLogs and VictoriaTraces MCP servers.
@@ -233,6 +237,8 @@ published as the corresponding GitHub release notes.
 - Time-series characteristics and shared autotune require `vmanomaly` v1.30.0 or newer.
 - This release contains no breaking MCP tool changes.
 
+[Unreleased]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/VictoriaMetrics/mcp-vmanomaly/compare/v0.5.0...v0.5.1
